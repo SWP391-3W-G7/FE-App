@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Filter, MapPin, Search } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,122 +14,45 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFoundItems } from '@/hooks/queries/useFoundItems';
+import { useLostItems } from '@/hooks/queries/useLostItems';
+import { formatRelativeDate } from '@/utils/date';
+import { getCategoryColor } from '@/utils/status';
 
 type TabType = 'lost' | 'found';
 
-// Interface cho Lost Item từ API
-interface LostItem {
-  lostItemId: number;
-  title: string;
-  description: string;
-  lostDate: string;
-  lostLocation: string;
-  status: string;
-  campusId: number;
-  campusName: string;
-  categoryId: number;
-  categoryName: string;
-  imageUrls: string[];
-}
-
 export default function HomeScreen() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('lost');
   const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [lostItems, setLostItems] = useState<LostItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch Lost Items từ API
-  const fetchLostItems = async () => {
-    const url = `${API_BASE_URL}${API_ENDPOINTS.LOST_ITEMS}`;
-    console.log('========== LOST ITEMS API CALL ==========');
-    console.log('URL:', url);
-    console.log('Token:', token ? 'Present' : 'Missing');
-    const startTime = Date.now();
+  // React Query hooks cho Lost và Found Items
+  const {
+    data: lostItems = [],
+    isLoading: isLoadingLost,
+    isRefetching: isRefetchingLost,
+    refetch: refetchLost,
+  } = useLostItems();
 
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+  const {
+    data: foundItems = [],
+    isLoading: isLoadingFound,
+    isRefetching: isRefetchingFound,
+    refetch: refetchFound,
+  } = useFoundItems();
 
-      const elapsed = Date.now() - startTime;
-      console.log(`Response status: ${response.status} (took ${elapsed}ms)`);
-
-      if (response.ok) {
-        const data: LostItem[] = await response.json();
-        console.log('Lost Items received:', data.length, 'items');
-        console.log('==========================================');
-        setLostItems(data);
-      } else {
-        console.error('Failed to fetch lost items:', response.status);
-        console.log('==========================================');
-      }
-    } catch (error) {
-      console.error('Error fetching lost items:', error);
-      console.log('==========================================');
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchLostItems();
-    }
-  }, [token]);
+  // Combined loading states
+  const isLoading = activeTab === 'lost' ? isLoadingLost : isLoadingFound;
+  const isRefetching = activeTab === 'lost' ? isRefetchingLost : isRefetchingFound;
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchLostItems();
-  };
-
-  const mockFoundItems = [
-    {
-      id: 1,
-      title: 'Red Water Bottle',
-      location: 'Gym',
-      date: '1 hour ago',
-      category: 'Others',
-    },
-    {
-      id: 2,
-      title: 'Laptop Charger',
-      location: 'Computer Lab',
-      date: '3 hours ago',
-      category: 'Electronics',
-    },
-  ];
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      Electronics: '#3b82f6',
-      Bags: '#10b981',
-      Documents: '#f59e0b',
-      Others: '#8b5cf6',
-    };
-    return colors[category] || '#64748b';
-  };
-
-  // Format date từ API
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString('vi-VN');
+    if (activeTab === 'lost') {
+      refetchLost();
+    } else {
+      refetchFound();
+    }
   };
 
   return (
@@ -186,7 +109,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#667eea" />
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#667eea" />
         }
       >
         {isLoading && activeTab === 'lost' ? (
@@ -223,7 +146,7 @@ export default function HomeScreen() {
                     <Text style={styles.cardLocation} numberOfLines={1}>{item.lostLocation}</Text>
                   </View>
                   <View style={styles.cardFooter}>
-                    <Text style={styles.cardDate}>{formatDate(item.lostDate)}</Text>
+                    <Text style={styles.cardDate}>{formatRelativeDate(item.lostDate)}</Text>
                     <View style={[styles.statusBadge, item.status === 'Closed' && styles.statusClosed]}>
                       <Text style={styles.statusText}>{item.status}</Text>
                     </View>
@@ -233,25 +156,48 @@ export default function HomeScreen() {
             ))
           )
         ) : (
-          mockFoundItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.card}>
-              <View style={styles.cardBody}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <View
-                    style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}
-                  >
-                    <Text style={styles.categoryText}>{item.category}</Text>
+          isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#667eea" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          ) : foundItems.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No found items</Text>
+            </View>
+          ) : (
+            foundItems.map((item) => (
+              <TouchableOpacity key={item.foundItemId} style={styles.card}>
+                {item.imageUrls && item.imageUrls.length > 0 && (
+                  <Image
+                    source={{ uri: item.imageUrls[0] }}
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={styles.cardBody}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                    <View
+                      style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.categoryName) }]}
+                    >
+                      <Text style={styles.categoryText}>{item.categoryName}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <MapPin size={14} color="#64748b" />
+                    <Text style={styles.cardLocation} numberOfLines={1}>{item.foundLocation}</Text>
+                  </View>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardDate}>{formatRelativeDate(item.foundDate)}</Text>
+                    <View style={[styles.statusBadge, item.status === 'Returned' && styles.statusClosed]}>
+                      <Text style={styles.statusText}>{item.status}</Text>
+                    </View>
                   </View>
                 </View>
-                <View style={styles.cardInfo}>
-                  <MapPin size={14} color="#64748b" />
-                  <Text style={styles.cardLocation}>{item.location}</Text>
-                </View>
-                <Text style={styles.cardDate}>{item.date}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))
+          )
         )}
       </ScrollView>
     </View>

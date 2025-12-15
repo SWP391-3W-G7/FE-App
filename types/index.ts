@@ -86,3 +86,43 @@ export interface ClaimRequest {
 
 export type ItemStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 export type ClaimStatus = 'Pending' | 'Approved' | 'Rejected';
+
+// API Response types - thêm các fields từ API response
+export interface LostItemResponse {
+    lostItemId: number;
+    title: string;
+    description: string;
+    lostDate: string;
+    lostLocation: string;
+    status: string;
+    campusId: number;
+    campusName: string;
+    categoryId: number;
+    categoryName: string;
+    imageUrls: string[];
+}
+
+export interface FoundItemResponse {
+    foundItemId: number;
+    title: string;
+    description: string;
+    foundDate: string;
+    foundLocation: string;
+    status: string;
+    campusId: number;
+    campusName: string;
+    categoryId: number;
+    categoryName: string;
+    createdBy: number;
+    storedBy: number | null;
+    imageUrls: string[];
+    claimRequests: unknown[] | null;
+    actionLogs: unknown[] | null;
+}
+
+// /Campus/enum-values API response
+export interface CampusEnumValue {
+    id: number;
+    name: string;
+    description: string;
+}
