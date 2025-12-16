@@ -14,6 +14,9 @@ export const STATUS_COLORS: Record<string, string> = {
     Pending: '#f59e0b',
     Approved: '#10b981',
     Rejected: '#ef4444',
+    Lost: '#ef4444',
+    Found: '#10b981',
+    Returned: '#3b82f6',
 };
 
 /**

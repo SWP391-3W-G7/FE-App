@@ -4,7 +4,7 @@ export const API_ENDPOINTS = {
     LOGIN: '/Users/login',
     REGISTER: '/Users/register',
     LOST_ITEMS: '/lost-items',
-    FOUND_ITEMS: '/FoundItems',
+    FOUND_ITEMS: '/found-items',
     CLAIMS: '/ClaimRequests',
     CATEGORIES: '/Categories',
     CAMPUSES: '/Campus/enum-values',

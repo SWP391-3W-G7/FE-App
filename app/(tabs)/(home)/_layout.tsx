@@ -17,7 +17,22 @@ export default function HomeStackLayout() {
       <Stack.Screen
         name="index"
         options={{
+          headerShown: false,
           title: 'Lost & Found',
+        }}
+      />
+      <Stack.Screen
+        name="lost-item/[id]"
+        options={{
+          headerShown: false,
+          title: 'Item Details',
+        }}
+      />
+      <Stack.Screen
+        name="found-item/[id]"
+        options={{
+          headerShown: false,
+          title: 'Found Item',
         }}
       />
     </Stack>

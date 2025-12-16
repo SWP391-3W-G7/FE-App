@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useCampuses } from '@/hooks/queries/useCampuses';
 
 export default function RegisterScreen() {
     const { register, isRegistering, registerError } = useAuth();

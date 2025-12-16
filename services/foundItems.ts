@@ -15,10 +15,11 @@ export async function getFoundItems(): Promise<FoundItemResponse[]> {
 }
 
 /**
- * Lấy chi tiết một Found Item theo ID
+ * Lấy chi tiết một Found Item theo ID (dành cho user đã đăng nhập)
+ * Endpoint: /found-items/{id}/user-details (requires auth)
  */
 export async function getFoundItemById(id: number): Promise<FoundItemResponse> {
-    return apiClient<FoundItemResponse>(`${API_ENDPOINTS.FOUND_ITEMS}/${id}`);
+    return apiClient<FoundItemResponse>(`${API_ENDPOINTS.FOUND_ITEMS}/${id}/user-details`);
 }
 
 /**
