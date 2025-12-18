@@ -126,3 +126,41 @@ export interface CampusEnumValue {
     name: string;
     description: string;
 }
+
+// My Claims API response types
+export interface ClaimEvidence {
+    evidenceId: number;
+    title: string;
+    description: string;
+    createdAt: string;
+    imageUrls: string[];
+}
+
+export interface ClaimActionLog {
+    actionId: number;
+    lostItemId: number | null;
+    foundItemId: number | null;
+    claimRequestId: number;
+    actionType: string;
+    actionDetails: string;
+    oldStatus: string | null;
+    newStatus: string;
+    actionDate: string;
+    performedBy: number;
+    performedByName: string;
+    campusId: number;
+    campusName: string;
+}
+
+export interface MyClaimResponse {
+    claimId: number;
+    claimDate: string;
+    status: string;
+    foundItemId: number | null;
+    lostItemId: number | null;
+    foundItemTitle: string | null;
+    studentId: number;
+    studentName: string | null;
+    evidences: ClaimEvidence[];
+    actionLogs: ClaimActionLog[];
+}

@@ -1,6 +1,13 @@
+import { useMyClaims, useMyFoundItems } from '@/hooks/queries';
+import type { FoundItemResponse, MyClaimResponse } from '@/types';
+import { formatRelativeDate } from '@/utils/date';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { CheckCircle, Clock, Package, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -8,54 +15,32 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ItemTab = 'myReports' | 'myClaims';
 
 export default function MyItemsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ItemTab>('myReports');
-  const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  // React Query hook for My Claims
+  const {
+    data: claims,
+    isLoading: isClaimsLoading,
+    isError: isClaimsError,
+    refetch: refetchClaims,
+    isRefetching: isClaimsRefetching,
+  } = useMyClaims();
 
-  const mockReports = [
-    {
-      id: 1,
-      title: 'Black iPhone 13 Pro',
-      type: 'lost',
-      status: 'Open',
-      date: '2 hours ago',
-      location: 'Library Building A',
-    },
-    {
-      id: 2,
-      title: 'Red Water Bottle',
-      type: 'found',
-      status: 'In Progress',
-      date: '1 day ago',
-      location: 'Gym',
-    },
-  ];
-
-  const mockClaims = [
-    {
-      id: 1,
-      itemTitle: 'Blue Backpack',
-      status: 'Pending',
-      claimedDate: '1 day ago',
-      location: 'Cafeteria',
-    },
-    {
-      id: 2,
-      itemTitle: 'Laptop Charger',
-      status: 'Approved',
-      claimedDate: '3 days ago',
-      location: 'Computer Lab',
-    },
-  ];
+  // React Query hook for My Found Items
+  const {
+    data: foundItems,
+    isLoading: isFoundItemsLoading,
+    isError: isFoundItemsError,
+    refetch: refetchFoundItems,
+    isRefetching: isFoundItemsRefetching,
+  } = useMyFoundItems();
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -66,6 +51,8 @@ export default function MyItemsScreen() {
       Pending: '#f59e0b',
       Approved: '#10b981',
       Rejected: '#ef4444',
+      Stored: '#8b5cf6',
+      Returned: '#10b981',
     };
     return colors[status] || '#64748b';
   };
@@ -75,6 +62,7 @@ export default function MyItemsScreen() {
     switch (status) {
       case 'Approved':
       case 'Resolved':
+      case 'Returned':
         return <CheckCircle {...iconProps} />;
       case 'Rejected':
       case 'Closed':
@@ -87,12 +75,157 @@ export default function MyItemsScreen() {
     }
   };
 
+  const handleFoundItemPress = (id: number) => {
+    router.push(`/(tabs)/(my-items)/found-item/${id}` as any);
+  };
+
+  const handleClaimPress = (id: number) => {
+    router.push(`/(tabs)/(my-items)/claim/${id}` as any);
+  };
+
+  const renderFoundItemCard = (item: FoundItemResponse) => (
+    <TouchableOpacity
+      key={item.foundItemId}
+      style={styles.card}
+      onPress={() => handleFoundItemPress(item.foundItemId)}
+    >
+      <View style={styles.cardWithImage}>
+        {item.imageUrls && item.imageUrls.length > 0 && (
+          <Image source={{ uri: item.imageUrls[0] }} style={styles.cardImage} />
+        )}
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+              {getStatusIcon(item.status)}
+              <Text style={styles.statusText}>{item.status}</Text>
+            </View>
+          </View>
+          <View style={styles.cardRow}>
+            <View style={[styles.typeBadge, styles.typeBadgeFound]}>
+              <Text style={[styles.typeText, styles.typeTextFound]}>Found</Text>
+            </View>
+            <Text style={styles.cardLocation} numberOfLines={1}>
+              {item.foundLocation}
+            </Text>
+          </View>
+          <Text style={styles.cardDate}>{formatRelativeDate(item.foundDate)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderClaimCard = (claim: MyClaimResponse) => (
+    <TouchableOpacity
+      key={claim.claimId}
+      style={styles.card}
+      onPress={() => handleClaimPress(claim.claimId)}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{claim.foundItemTitle || `Claim #${claim.claimId}`}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(claim.status) }]}>
+          {getStatusIcon(claim.status)}
+          <Text style={styles.statusText}>{claim.status}</Text>
+        </View>
+      </View>
+      {claim.evidences.length > 0 && (
+        <Text style={styles.cardLocation} numberOfLines={2}>
+          {claim.evidences[0].description}
+        </Text>
+      )}
+      <Text style={styles.cardDate}>Yêu cầu {formatRelativeDate(claim.claimDate)}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderReportsContent = () => {
+    if (isFoundItemsLoading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#667eea" />
+          <Text style={styles.loadingText}>Đang tải...</Text>
+        </View>
+      );
+    }
+
+    if (isFoundItemsError) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetchFoundItems()}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!foundItems || foundItems.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Package size={48} color="#94a3b8" />
+          <Text style={styles.emptyText}>Chưa có báo cáo nào</Text>
+        </View>
+      );
+    }
+
+    return foundItems.map(renderFoundItemCard);
+  };
+
+  const renderClaimsContent = () => {
+    if (isClaimsLoading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#667eea" />
+          <Text style={styles.loadingText}>Đang tải...</Text>
+        </View>
+      );
+    }
+
+    if (isClaimsError) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetchClaims()}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!claims || claims.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Package size={48} color="#94a3b8" />
+          <Text style={styles.emptyText}>Chưa có yêu cầu nhận đồ nào</Text>
+        </View>
+      );
+    }
+
+    return claims.map(renderClaimCard);
+  };
+
+  const handleRefresh = () => {
+    if (activeTab === 'myReports') {
+      refetchFoundItems();
+    } else {
+      refetchClaims();
+    }
+  };
+
+  const isRefreshing = activeTab === 'myReports' ? isFoundItemsRefetching : isClaimsRefetching;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top }]}
+      >
         <Text style={styles.headerTitle}>My Activity</Text>
         <Text style={styles.headerSubtitle}>Track your reports and claims</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -116,61 +249,12 @@ export default function MyItemsScreen() {
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#667eea" />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#667eea" />
         }
       >
-        {activeTab === 'myReports' ? (
-          mockReports.map((report) => (
-            <TouchableOpacity key={report.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{report.title}</Text>
-                <View
-                  style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) }]}
-                >
-                  {getStatusIcon(report.status)}
-                  <Text style={styles.statusText}>{report.status}</Text>
-                </View>
-              </View>
-              <View style={styles.cardRow}>
-                <View
-                  style={[
-                    styles.typeBadge,
-                    report.type === 'lost' ? styles.typeBadgeLost : styles.typeBadgeFound,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.typeText,
-                      report.type === 'lost' ? styles.typeTextLost : styles.typeTextFound,
-                    ]}
-                  >
-                    {report.type === 'lost' ? 'Lost' : 'Found'}
-                  </Text>
-                </View>
-                <Text style={styles.cardLocation}>{report.location}</Text>
-              </View>
-              <Text style={styles.cardDate}>{report.date}</Text>
-            </TouchableOpacity>
-          ))
-        ) : (
-          mockClaims.map((claim) => (
-            <TouchableOpacity key={claim.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{claim.itemTitle}</Text>
-                <View
-                  style={[styles.statusBadge, { backgroundColor: getStatusColor(claim.status) }]}
-                >
-                  {getStatusIcon(claim.status)}
-                  <Text style={styles.statusText}>{claim.status}</Text>
-                </View>
-              </View>
-              <Text style={styles.cardLocation}>{claim.location}</Text>
-              <Text style={styles.cardDate}>Claimed {claim.claimedDate}</Text>
-            </TouchableOpacity>
-          ))
-        )}
+        {activeTab === 'myReports' ? renderReportsContent() : renderClaimsContent()}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -181,19 +265,18 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 24,
-    backgroundColor: '#fff',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold' as const,
-    color: '#1e293b',
+    color: '#fff',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#64748b',
+    color: '#e0e7ff',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -240,42 +323,54 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  cardWithImage: {
+    flexDirection: 'row',
+  },
+  cardImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  cardContent: {
+    flex: 1,
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold' as const,
     color: '#1e293b',
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
     color: '#fff',
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 4,
   },
   typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
     borderWidth: 1,
   },
   typeBadgeLost: {
@@ -287,7 +382,7 @@ const styles = StyleSheet.create({
     borderColor: '#bbf7d0',
   },
   typeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
   },
   typeTextLost: {
@@ -297,12 +392,44 @@ const styles = StyleSheet.create({
     color: '#16a34a',
   },
   cardLocation: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748b',
     flex: 1,
   },
   cardDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94a3b8',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748b',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
   },
 });

@@ -15,6 +15,13 @@ export async function getFoundItems(): Promise<FoundItemResponse[]> {
 }
 
 /**
+ * Lấy danh sách Found Items của current user
+ */
+export async function getMyFoundItems(): Promise<FoundItemResponse[]> {
+    return apiClient<FoundItemResponse[]>(API_ENDPOINTS.MY_FOUND_ITEMS);
+}
+
+/**
  * Lấy chi tiết một Found Item theo ID (dành cho user đã đăng nhập)
  * Endpoint: /found-items/{id}/user-details (requires auth)
  */

@@ -17,7 +17,19 @@ export default function MyItemsStackLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'My Items',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="found-item/[id]"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="claim/[id]"
+        options={{
+          headerShown: false,
         }}
       />
     </Stack>

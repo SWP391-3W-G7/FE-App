@@ -1,35 +1,28 @@
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     Building2,
     Calendar,
-    Camera,
     ChevronLeft,
     FileText,
     MapPin,
     Tag,
     UserCheck,
-    X,
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     Image,
-    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCreateClaim } from '@/hooks/mutations/useCreateClaim';
 import { useFoundItemDetail } from '@/hooks/queries/useFoundItemDetail';
 import { formatRelativeDate } from '@/utils/date';
 import { getCategoryColor, getStatusColor } from '@/utils/status';
@@ -37,103 +30,24 @@ import { getCategoryColor, getStatusColor } from '@/utils/status';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_HEIGHT = 300;
 
-interface ImageFile {
-    uri: string;
-    type: string;
-    name: string;
-}
-
-export default function FoundItemDetailScreen() {
+export default function MyFoundItemDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-    // Claim form state
-    const [showClaimModal, setShowClaimModal] = useState(false);
-    const [evidenceTitle, setEvidenceTitle] = useState('');
-    const [evidenceDescription, setEvidenceDescription] = useState('');
-    const [evidenceImages, setEvidenceImages] = useState<ImageFile[]>([]);
-
     const itemId = parseInt(id || '0', 10);
     const { data: item, isLoading, isRefetching, refetch, error } = useFoundItemDetail(itemId);
-    const createClaimMutation = useCreateClaim();
 
     const handleBack = () => {
         router.back();
     };
 
-    const handleClaimPress = () => {
-        setShowClaimModal(true);
-    };
-
-    const handleCloseModal = () => {
-        setShowClaimModal(false);
-        setEvidenceTitle('');
-        setEvidenceDescription('');
-        setEvidenceImages([]);
-    };
-
-    const handlePickImage = async () => {
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permissionResult.granted) {
-            Alert.alert('Quyền truy cập', 'Cần cấp quyền truy cập thư viện ảnh');
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsMultipleSelection: true,
-            quality: 0.8,
-        });
-
-        if (!result.canceled) {
-            const newImages = result.assets.map((asset, index) => ({
-                uri: asset.uri,
-                type: asset.mimeType || 'image/jpeg',
-                name: asset.fileName || `evidence_${Date.now()}_${index}.jpg`,
-            }));
-            setEvidenceImages([...evidenceImages, ...newImages]);
-        }
-    };
-
-    const handleRemoveImage = (index: number) => {
-        setEvidenceImages(evidenceImages.filter((_, i) => i !== index));
-    };
-
-    const handleSubmitClaim = async () => {
-        if (!evidenceTitle.trim()) {
-            Alert.alert('Lỗi', 'Vui lòng nhập tiêu đề bằng chứng');
-            return;
-        }
-        if (!evidenceDescription.trim()) {
-            Alert.alert('Lỗi', 'Vui lòng nhập mô tả bằng chứng');
-            return;
-        }
-        if (!item) return;
-
-        try {
-            await createClaimMutation.mutateAsync({
-                foundItemId: item.foundItemId,
-                evidenceTitle: evidenceTitle.trim(),
-                evidenceDescription: evidenceDescription.trim(),
-                campusId: item.campusId,
-                evidenceImages: evidenceImages.length > 0 ? evidenceImages : undefined,
-            });
-
-            Alert.alert('Thành công', 'Yêu cầu nhận đồ đã được gửi!', [
-                { text: 'OK', onPress: handleCloseModal },
-            ]);
-        } catch (err) {
-            Alert.alert('Lỗi', 'Không thể gửi yêu cầu. Vui lòng thử lại.');
-        }
-    };
-
     if (isLoading) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <ActivityIndicator size="large" color="#10b981" />
-                <Text style={styles.loadingText}>Loading item details...</Text>
+                <ActivityIndicator size="large" color="#667eea" />
+                <Text style={styles.loadingText}>Đang tải...</Text>
             </View>
         );
     }
@@ -141,9 +55,9 @@ export default function FoundItemDetailScreen() {
     if (error || !item) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <Text style={styles.errorText}>Failed to load item details</Text>
+                <Text style={styles.errorText}>Không thể tải thông tin</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-                    <Text style={styles.retryButtonText}>Try Again</Text>
+                    <Text style={styles.retryButtonText}>Thử lại</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -154,9 +68,9 @@ export default function FoundItemDetailScreen() {
 
     return (
         <View style={styles.container}>
-            {/* Header with back button - Green theme for Found Items */}
+            {/* Header with back button - Purple theme for My Items */}
             <LinearGradient
-                colors={['#10b981', '#059669']}
+                colors={['#667eea', '#764ba2']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
@@ -164,7 +78,7 @@ export default function FoundItemDetailScreen() {
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <ChevronLeft size={28} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Found Item</Text>
+                <Text style={styles.headerTitle}>Chi tiết báo cáo</Text>
                 <View style={styles.headerSpacer} />
             </LinearGradient>
 
@@ -172,7 +86,7 @@ export default function FoundItemDetailScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#10b981" />
+                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#667eea" />
                 }
                 showsVerticalScrollIndicator={false}
             >
@@ -215,7 +129,7 @@ export default function FoundItemDetailScreen() {
                 ) : (
                     <View style={styles.noImageContainer}>
                         <FileText size={48} color="#94a3b8" />
-                        <Text style={styles.noImageText}>No image available</Text>
+                        <Text style={styles.noImageText}>Không có ảnh</Text>
                     </View>
                 )}
 
@@ -240,11 +154,11 @@ export default function FoundItemDetailScreen() {
                     {/* Info Section */}
                     <View style={styles.infoSection}>
                         <View style={styles.infoRow}>
-                            <View style={[styles.iconContainer, { backgroundColor: '#d1fae5' }]}>
-                                <MapPin size={18} color="#10b981" />
+                            <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
+                                <MapPin size={18} color="#667eea" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Found Location</Text>
+                                <Text style={styles.infoLabel}>Vị trí tìm thấy</Text>
                                 <Text style={styles.infoValue}>{item.foundLocation}</Text>
                             </View>
                         </View>
@@ -252,11 +166,11 @@ export default function FoundItemDetailScreen() {
                         <View style={styles.divider} />
 
                         <View style={styles.infoRow}>
-                            <View style={[styles.iconContainer, { backgroundColor: '#d1fae5' }]}>
-                                <Calendar size={18} color="#10b981" />
+                            <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
+                                <Calendar size={18} color="#667eea" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Found Date</Text>
+                                <Text style={styles.infoLabel}>Ngày tìm thấy</Text>
                                 <Text style={styles.infoValue}>
                                     {new Date(item.foundDate).toLocaleDateString('vi-VN', {
                                         weekday: 'long',
@@ -272,8 +186,8 @@ export default function FoundItemDetailScreen() {
                         <View style={styles.divider} />
 
                         <View style={styles.infoRow}>
-                            <View style={[styles.iconContainer, { backgroundColor: '#d1fae5' }]}>
-                                <Building2 size={18} color="#10b981" />
+                            <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
+                                <Building2 size={18} color="#667eea" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Campus</Text>
@@ -285,7 +199,7 @@ export default function FoundItemDetailScreen() {
                     {/* Description */}
                     {item.description && (
                         <View style={styles.descriptionSection}>
-                            <Text style={styles.sectionTitle}>Description</Text>
+                            <Text style={styles.sectionTitle}>Mô tả</Text>
                             <Text style={styles.descriptionText}>{item.description}</Text>
                         </View>
                     )}
@@ -293,107 +207,14 @@ export default function FoundItemDetailScreen() {
 
                 {/* Action Buttons */}
                 <View style={styles.actionSection}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={handleClaimPress}>
+                    <TouchableOpacity style={styles.primaryButton}>
                         <UserCheck size={20} color="#fff" style={{ marginRight: 8 }} />
-                        <Text style={styles.primaryButtonText}>Claim This Item</Text>
+                        <Text style={styles.primaryButtonText}>Xem yêu cầu nhận</Text>
                     </TouchableOpacity>
                 </View>
 
                 <View style={{ height: insets.bottom + 20 }} />
             </ScrollView>
-
-            {/* Claim Form Modal */}
-            <Modal
-                visible={showClaimModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={handleCloseModal}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
-                        {/* Modal Header */}
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Yêu cầu nhận đồ</Text>
-                            <TouchableOpacity onPress={handleCloseModal}>
-                                <X size={24} color="#64748b" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {/* Item Info */}
-                            <View style={styles.claimItemInfo}>
-                                <Text style={styles.claimItemLabel}>Món đồ:</Text>
-                                <Text style={styles.claimItemName}>{item.title}</Text>
-                            </View>
-
-                            {/* Evidence Title */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Tiêu đề bằng chứng *</Text>
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder="VD: Đây là ví của tôi"
-                                    placeholderTextColor="#94a3b8"
-                                    value={evidenceTitle}
-                                    onChangeText={setEvidenceTitle}
-                                />
-                            </View>
-
-                            {/* Evidence Description */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Mô tả chi tiết *</Text>
-                                <TextInput
-                                    style={[styles.textInput, styles.textArea]}
-                                    placeholder="Mô tả chi tiết đặc điểm nhận dạng của món đồ..."
-                                    placeholderTextColor="#94a3b8"
-                                    value={evidenceDescription}
-                                    onChangeText={setEvidenceDescription}
-                                    multiline
-                                    numberOfLines={4}
-                                    textAlignVertical="top"
-                                />
-                            </View>
-
-                            {/* Evidence Images */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Ảnh bằng chứng</Text>
-                                <View style={styles.imagePickerRow}>
-                                    <TouchableOpacity style={styles.addImageButton} onPress={handlePickImage}>
-                                        <Camera size={24} color="#10b981" />
-                                        <Text style={styles.addImageText}>Thêm ảnh</Text>
-                                    </TouchableOpacity>
-                                    {evidenceImages.map((img, index) => (
-                                        <View key={index} style={styles.previewImageContainer}>
-                                            <Image source={{ uri: img.uri }} style={styles.previewImage} />
-                                            <TouchableOpacity
-                                                style={styles.removeImageButton}
-                                                onPress={() => handleRemoveImage(index)}
-                                            >
-                                                <X size={14} color="#fff" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-
-                            {/* Submit Button */}
-                            <TouchableOpacity
-                                style={[
-                                    styles.submitButton,
-                                    createClaimMutation.isPending && styles.submitButtonDisabled,
-                                ]}
-                                onPress={handleSubmitClaim}
-                                disabled={createClaimMutation.isPending}
-                            >
-                                {createClaimMutation.isPending ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <Text style={styles.submitButtonText}>Gửi yêu cầu</Text>
-                                )}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
@@ -418,7 +239,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#10b981',
+        backgroundColor: '#667eea',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
@@ -620,135 +441,19 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     primaryButton: {
-        backgroundColor: '#10b981',
+        backgroundColor: '#667eea',
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        shadowColor: '#10b981',
+        shadowColor: '#667eea',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
     },
     primaryButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-
-    // Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 20,
-        maxHeight: '85%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1e293b',
-    },
-    claimItemInfo: {
-        backgroundColor: '#f0fdf4',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 20,
-    },
-    claimItemLabel: {
-        fontSize: 12,
-        color: '#64748b',
-        marginBottom: 4,
-    },
-    claimItemName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#10b981',
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1e293b',
-        marginBottom: 8,
-    },
-    textInput: {
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        color: '#1e293b',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-    },
-    textArea: {
-        height: 100,
-    },
-    imagePickerRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    addImageButton: {
-        width: 80,
-        height: 80,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#10b981',
-        borderStyle: 'dashed',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-    },
-    addImageText: {
-        fontSize: 10,
-        color: '#10b981',
-    },
-    previewImageContainer: {
-        position: 'relative',
-    },
-    previewImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 12,
-    },
-    removeImageButton: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#ef4444',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    submitButton: {
-        backgroundColor: '#10b981',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    submitButtonDisabled: {
-        backgroundColor: '#94a3b8',
-    },
-    submitButtonText: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#fff',

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { FileText, Home, LayoutList, User } from 'lucide-react-native';
+import { Bell, FileText, Home, LayoutList, User } from 'lucide-react-native';
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,6 +38,13 @@ export default function TabLayout() {
         options={{
           title: 'Report',
           tabBarIcon: ({ color }) => <FileText size={iconSize} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="(notifications)"
+        options={{
+          title: 'Notifications',
+          tabBarIcon: ({ color }) => <Bell size={iconSize} color={color} />,
         }}
       />
       <Tabs.Screen
