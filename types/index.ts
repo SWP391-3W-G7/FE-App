@@ -86,3 +86,81 @@ export interface ClaimRequest {
 
 export type ItemStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 export type ClaimStatus = 'Pending' | 'Approved' | 'Rejected';
+
+// API Response types - thêm các fields từ API response
+export interface LostItemResponse {
+    lostItemId: number;
+    title: string;
+    description: string;
+    lostDate: string;
+    lostLocation: string;
+    status: string;
+    campusId: number;
+    campusName: string;
+    categoryId: number;
+    categoryName: string;
+    imageUrls: string[];
+}
+
+export interface FoundItemResponse {
+    foundItemId: number;
+    title: string;
+    description: string;
+    foundDate: string;
+    foundLocation: string;
+    status: string;
+    campusId: number;
+    campusName: string;
+    categoryId: number;
+    categoryName: string;
+    createdBy: number;
+    storedBy: number | null;
+    imageUrls: string[];
+    claimRequests: unknown[] | null;
+    actionLogs: unknown[] | null;
+}
+
+// /Campus/enum-values API response
+export interface CampusEnumValue {
+    id: number;
+    name: string;
+    description: string;
+}
+
+// My Claims API response types
+export interface ClaimEvidence {
+    evidenceId: number;
+    title: string;
+    description: string;
+    createdAt: string;
+    imageUrls: string[];
+}
+
+export interface ClaimActionLog {
+    actionId: number;
+    lostItemId: number | null;
+    foundItemId: number | null;
+    claimRequestId: number;
+    actionType: string;
+    actionDetails: string;
+    oldStatus: string | null;
+    newStatus: string;
+    actionDate: string;
+    performedBy: number;
+    performedByName: string;
+    campusId: number;
+    campusName: string;
+}
+
+export interface MyClaimResponse {
+    claimId: number;
+    claimDate: string;
+    status: string;
+    foundItemId: number | null;
+    lostItemId: number | null;
+    foundItemTitle: string | null;
+    studentId: number;
+    studentName: string | null;
+    evidences: ClaimEvidence[];
+    actionLogs: ClaimActionLog[];
+}

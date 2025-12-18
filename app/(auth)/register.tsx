@@ -16,15 +16,8 @@ import {
     View,
 } from 'react-native';
 
-import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Interface cho Campus từ API /Campus/enum-values
-interface Campus {
-    id: number;
-    name: string;
-    description: string;
-}
+import { useCampuses } from '@/hooks/queries/useCampuses';
 
 export default function RegisterScreen() {
     const { register, isRegistering, registerError } = useAuth();
@@ -37,44 +30,16 @@ export default function RegisterScreen() {
         campusId: 0, // Default 0, sẽ được set khi fetch xong
     });
     const [showCampusPicker, setShowCampusPicker] = useState(false);
-    const [campuses, setCampuses] = useState<Campus[]>([]);
-    const [isLoadingCampuses, setIsLoadingCampuses] = useState(true);
 
-    // Fetch danh sách campus từ API khi component mount
+    // Sử dụng React Query hook thay vì useState + useEffect + fetch
+    const { data: campuses = [], isLoading: isLoadingCampuses } = useCampuses();
+
+    // Set default campusId khi campuses load xong
     useEffect(() => {
-        const fetchCampuses = async () => {
-            const url = `${API_BASE_URL}${API_ENDPOINTS.CAMPUSES}`;
-            console.log('========== CAMPUS API CALL ==========');
-            console.log('URL:', url);
-            const startTime = Date.now();
-
-            try {
-                const response = await fetch(url);
-                const elapsed = Date.now() - startTime;
-                console.log(`Response status: ${response.status} (took ${elapsed}ms)`);
-
-                if (response.ok) {
-                    const data: Campus[] = await response.json();
-                    console.log('Campuses received:', data.length, 'items');
-                    console.log('======================================');
-                    setCampuses(data);
-                    // Set default campus nếu có data
-                    if (data.length > 0) {
-                        setFormData(prev => ({ ...prev, campusId: data[0].id }));
-                    }
-                } else {
-                    console.error('Failed to fetch campuses:', response.status);
-                }
-            } catch (error) {
-                console.error('Error fetching campuses:', error);
-                console.log('======================================');
-            } finally {
-                setIsLoadingCampuses(false);
-            }
-        };
-
-        fetchCampuses();
-    }, []);
+        if (campuses.length > 0 && formData.campusId === 0) {
+            setFormData(prev => ({ ...prev, campusId: campuses[0].id }));
+        }
+    }, [campuses]);
 
     const handleRegister = () => {
         if (!formData.username || !formData.email || !formData.password || !formData.fullName) {
@@ -91,7 +56,7 @@ export default function RegisterScreen() {
         });
     };
 
-    const selectedCampus = campuses.find((c: Campus) => c.id === formData.campusId);
+    const selectedCampus = campuses.find((c) => c.id === formData.campusId);
 
     return (
         <View style={styles.container}>
@@ -263,7 +228,7 @@ export default function RegisterScreen() {
 
                         {/* Danh sách campus */}
                         <ScrollView style={styles.campusListModal} showsVerticalScrollIndicator={false}>
-                            {campuses.map((campus: Campus, index: number) => (
+                            {campuses.map((campus, index) => (
                                 <TouchableOpacity
                                     key={campus.id}
                                     style={[

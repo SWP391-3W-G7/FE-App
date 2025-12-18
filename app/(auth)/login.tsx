@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { AlertCircle, Lock, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,9 +17,12 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 export default function LoginScreen() {
+    const router = useRouter();
     const { login, isLoggingIn, loginError } = useAuth();
+    const { handleGoogleLogin, isLoading: isGoogleLoading } = useGoogleAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -30,6 +34,16 @@ export default function LoginScreen() {
 
         login({ email, password });
     };
+
+    const onGoogleLogin = async () => {
+        const success = await handleGoogleLogin();
+        if (success) {
+            // Reload to trigger auth state change
+            router.replace('/(tabs)/(home)' as any);
+        }
+    };
+
+    const isDisabled = isLoggingIn || isGoogleLoading;
 
     return (
         <View style={styles.container}>
@@ -75,7 +89,7 @@ export default function LoginScreen() {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoComplete="email"
-                                editable={!isLoggingIn}
+                                editable={!isDisabled}
                             />
                         </View>
 
@@ -92,19 +106,45 @@ export default function LoginScreen() {
                                 secureTextEntry
                                 autoCapitalize="none"
                                 autoComplete="password"
-                                editable={!isLoggingIn}
+                                editable={!isDisabled}
                             />
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.button, isLoggingIn && styles.buttonDisabled]}
+                            style={[styles.button, isDisabled && styles.buttonDisabled]}
                             onPress={handleLogin}
-                            disabled={isLoggingIn}
+                            disabled={isDisabled}
                         >
                             {isLoggingIn ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
                                 <Text style={styles.buttonText}>Sign In</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Divider */}
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.divider} />
+                            <Text style={styles.dividerText}>hoặc</Text>
+                            <View style={styles.divider} />
+                        </View>
+
+                        {/* Google Login Button */}
+                        <TouchableOpacity
+                            style={[styles.googleButton, isDisabled && styles.buttonDisabled]}
+                            onPress={onGoogleLogin}
+                            disabled={isDisabled}
+                        >
+                            {isGoogleLoading ? (
+                                <ActivityIndicator color="#1e293b" />
+                            ) : (
+                                <>
+                                    <Image
+                                        source={{ uri: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg' }}
+                                        style={styles.googleIcon}
+                                    />
+                                    <Text style={styles.googleButtonText}>Đăng nhập bằng Google</Text>
+                                </>
                             )}
                         </TouchableOpacity>
 
@@ -212,6 +252,41 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold' as const,
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#e2e8f0',
+    },
+    dividerText: {
+        marginHorizontal: 16,
+        color: '#94a3b8',
+        fontSize: 14,
+    },
+    googleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 56,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#e2e8f0',
+        backgroundColor: '#fff',
+        gap: 12,
+    },
+    googleIcon: {
+        width: 24,
+        height: 24,
+    },
+    googleButtonText: {
+        fontSize: 16,
+        fontWeight: '600' as const,
+        color: '#1e293b',
     },
     footer: {
         flexDirection: 'row',

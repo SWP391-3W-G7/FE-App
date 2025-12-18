@@ -77,9 +77,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             return result;
         },
         onSuccess: async (data) => {
-            await AsyncStorage.setItem(TOKEN_KEY, data.token);
-            setToken(data.token);
-
+            // Parse user data from JWT first
             const decoded = parseJwt(data.token);
             const userData: User = {
                 userId: parseInt(decoded.nameid),
@@ -93,8 +91,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
                 campusName: '',
             };
 
-            await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
+            // Save BOTH token and user to AsyncStorage before updating state
+            // This ensures navigation trigger happens AFTER all data is persisted
+            await Promise.all([
+                AsyncStorage.setItem(TOKEN_KEY, data.token),
+                AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
+            ]);
+
+            // Update state atomically to trigger navigation
+            // Using a slight delay to ensure React properly batches and processes the update
             setUser(userData);
+            setToken(data.token); // This triggers navigation in useEffect
         },
     });
 
