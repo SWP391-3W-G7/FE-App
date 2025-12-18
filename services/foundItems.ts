@@ -9,11 +9,11 @@ import { apiClient, apiClientFormData } from './api';
 import type { PaginatedResponse } from './lostItems';
 
 /**
- * Lấy danh sách Found Items (with pagination)
+ * Lấy danh sách Found Items (with pagination, only Stored items)
  */
 export async function getFoundItems(): Promise<PaginatedResponse<FoundItemResponse>> {
     return apiClient<PaginatedResponse<FoundItemResponse>>(
-        `${API_ENDPOINTS.FOUND_ITEMS}?PageNumber=1&PageSize=50`
+        `${API_ENDPOINTS.FOUND_ITEMS}?Status=Stored&PageNumber=1&PageSize=50`
     );
 }
 

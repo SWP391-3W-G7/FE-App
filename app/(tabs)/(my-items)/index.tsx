@@ -1,5 +1,5 @@
-import { useMyClaims, useMyFoundItems } from '@/hooks/queries';
-import type { FoundItemResponse, MyClaimResponse } from '@/types';
+import { useMyClaims, useMyFoundItems, useMyLostItems } from '@/hooks/queries';
+import type { FoundItemResponse, LostItemResponse, MyClaimResponse } from '@/types';
 import { formatRelativeDate } from '@/utils/date';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -42,6 +42,15 @@ export default function MyItemsScreen() {
     isRefetching: isFoundItemsRefetching,
   } = useMyFoundItems();
 
+  // React Query hook for My Lost Items
+  const {
+    data: lostItems,
+    isLoading: isLostItemsLoading,
+    isError: isLostItemsError,
+    refetch: refetchLostItems,
+    isRefetching: isLostItemsRefetching,
+  } = useMyLostItems();
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       Open: '#3b82f6',
@@ -53,6 +62,7 @@ export default function MyItemsScreen() {
       Rejected: '#ef4444',
       Stored: '#8b5cf6',
       Returned: '#10b981',
+      Lost: '#ef4444',
     };
     return colors[status] || '#64748b';
   };
@@ -69,6 +79,7 @@ export default function MyItemsScreen() {
         return <X {...iconProps} />;
       case 'Pending':
       case 'Open':
+      case 'Lost':
         return <Clock {...iconProps} />;
       default:
         return <Package {...iconProps} />;
@@ -79,13 +90,51 @@ export default function MyItemsScreen() {
     router.push(`/(tabs)/(my-items)/found-item/${id}` as any);
   };
 
+  const handleLostItemPress = (id: number) => {
+    router.push(`/(tabs)/(my-items)/lost-item/${id}` as any);
+  };
+
   const handleClaimPress = (id: number) => {
     router.push(`/(tabs)/(my-items)/claim/${id}` as any);
   };
 
+  const renderLostItemCard = (item: LostItemResponse) => (
+    <TouchableOpacity
+      key={`lost-${item.lostItemId}`}
+      style={styles.card}
+      onPress={() => handleLostItemPress(item.lostItemId)}
+    >
+      <View style={styles.cardWithImage}>
+        {item.imageUrls && item.imageUrls.length > 0 && (
+          <Image source={{ uri: item.imageUrls[0] }} style={styles.cardImage} />
+        )}
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+              {getStatusIcon(item.status)}
+              <Text style={styles.statusText}>{item.status}</Text>
+            </View>
+          </View>
+          <View style={styles.cardRow}>
+            <View style={[styles.typeBadge, styles.typeBadgeLost]}>
+              <Text style={[styles.typeText, styles.typeTextLost]}>Lost</Text>
+            </View>
+            <Text style={styles.cardLocation} numberOfLines={1}>
+              {item.lostLocation}
+            </Text>
+          </View>
+          <Text style={styles.cardDate}>{formatRelativeDate(item.lostDate)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderFoundItemCard = (item: FoundItemResponse) => (
     <TouchableOpacity
-      key={item.foundItemId}
+      key={`found-${item.foundItemId}`}
       style={styles.card}
       onPress={() => handleFoundItemPress(item.foundItemId)}
     >
@@ -140,7 +189,10 @@ export default function MyItemsScreen() {
   );
 
   const renderReportsContent = () => {
-    if (isFoundItemsLoading) {
+    const isLoading = isFoundItemsLoading || isLostItemsLoading;
+    const isError = isFoundItemsError || isLostItemsError;
+
+    if (isLoading) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#667eea" />
@@ -149,18 +201,21 @@ export default function MyItemsScreen() {
       );
     }
 
-    if (isFoundItemsError) {
+    if (isError) {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => refetchFoundItems()}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => { refetchFoundItems(); refetchLostItems(); }}>
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
-    if (!foundItems || foundItems.length === 0) {
+    const hasLostItems = lostItems && lostItems.length > 0;
+    const hasFoundItems = foundItems && foundItems.length > 0;
+
+    if (!hasLostItems && !hasFoundItems) {
       return (
         <View style={styles.centerContainer}>
           <Package size={48} color="#94a3b8" />
@@ -169,7 +224,23 @@ export default function MyItemsScreen() {
       );
     }
 
-    return foundItems.map(renderFoundItemCard);
+    // Combine and sort by date (most recent first)
+    const allItems: { type: 'lost' | 'found'; item: LostItemResponse | FoundItemResponse; date: Date }[] = [];
+
+    if (lostItems) {
+      lostItems.forEach(item => allItems.push({ type: 'lost', item, date: new Date(item.lostDate) }));
+    }
+    if (foundItems) {
+      foundItems.forEach(item => allItems.push({ type: 'found', item, date: new Date(item.foundDate) }));
+    }
+
+    allItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return allItems.map(({ type, item }) =>
+      type === 'lost'
+        ? renderLostItemCard(item as LostItemResponse)
+        : renderFoundItemCard(item as FoundItemResponse)
+    );
   };
 
   const renderClaimsContent = () => {
@@ -208,12 +279,15 @@ export default function MyItemsScreen() {
   const handleRefresh = () => {
     if (activeTab === 'myReports') {
       refetchFoundItems();
+      refetchLostItems();
     } else {
       refetchClaims();
     }
   };
 
-  const isRefreshing = activeTab === 'myReports' ? isFoundItemsRefetching : isClaimsRefetching;
+  const isRefreshing = activeTab === 'myReports'
+    ? isFoundItemsRefetching || isLostItemsRefetching
+    : isClaimsRefetching;
 
   return (
     <View style={styles.container}>

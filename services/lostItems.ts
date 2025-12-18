@@ -37,6 +37,14 @@ export async function getLostItemById(id: number): Promise<LostItemResponse> {
 }
 
 /**
+ * Lấy danh sách Lost Items của current user
+ * API returns direct array (not paginated)
+ */
+export async function getMyLostItems(): Promise<LostItemResponse[]> {
+    return apiClient<LostItemResponse[]>(`${API_ENDPOINTS.LOST_ITEMS}/my-lost-items`);
+}
+
+/**
  * Payload để tạo Lost Item mới
  */
 export interface CreateLostItemPayload {
