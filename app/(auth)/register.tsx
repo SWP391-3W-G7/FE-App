@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { AlertCircle, Check, ChevronDown, Lock, Mail, MapPin, User, X } from 'lucide-react-native';
+import { AlertCircle, Check, ChevronDown, Lock, Mail, MapPin, Phone, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -28,6 +28,7 @@ export default function RegisterScreen() {
         password: '',
         fullName: '',
         campusId: 0, // Default 0, sẽ được set khi fetch xong
+        phoneNumber: '',
     });
     const [showCampusPicker, setShowCampusPicker] = useState(false);
 
@@ -147,6 +148,22 @@ export default function RegisterScreen() {
                                 value={formData.password}
                                 onChangeText={(text) => setFormData({ ...formData, password: text })}
                                 secureTextEntry
+                                autoCapitalize="none"
+                                editable={!isRegistering}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <View style={styles.inputIcon}>
+                                <Phone size={20} color="#667eea" />
+                            </View>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Số điện thoại"
+                                placeholderTextColor="#94a3b8"
+                                value={formData.phoneNumber}
+                                onChangeText={(text) => setFormData({ ...formData, phoneNumber: text })}
+                                keyboardType="phone-pad"
                                 autoCapitalize="none"
                                 editable={!isRegistering}
                             />

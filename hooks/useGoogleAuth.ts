@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
@@ -10,9 +11,17 @@ WebBrowser.maybeCompleteAuthSession();
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
 
-// Backend callback URL that returns the token
-const CALLBACK_URL = `${API_BASE_URL?.replace('/api', '')}/callback`;
-const GOOGLE_LOGIN_URL = `${API_BASE_URL?.replace('/api', '')}/api/auth/google-login`;
+// Backend base URL without /api
+const BACKEND_ROOT_URL = API_BASE_URL?.replace('/api', '');
+
+// Generate redirect URI for mobile app
+// This is what the backend should redirect to after processing Google login
+const REDIRECT_URI = AuthSession.makeRedirectUri({
+    scheme: 'fpulostfound',
+    path: 'callback',
+});
+
+console.log('Google Auth Redirect URI:', REDIRECT_URI);
 
 export interface GoogleAuthResult {
     success: boolean;
@@ -23,17 +32,35 @@ export interface GoogleAuthResult {
 export const useGoogleAuth = () => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const promptGoogleLogin = useCallback(async (): Promise<GoogleAuthResult> => {
+    /**
+     * Prompt Google login with campusId
+     * @param campusId - The campus ID to associate with the user
+     */
+    const promptGoogleLogin = useCallback(async (campusId?: number): Promise<GoogleAuthResult> => {
         setIsLoading(true);
 
         try {
+            // Build Google login URL with campusId and redirect URI
+            const params = new URLSearchParams();
+            if (campusId) {
+                params.append('campusId', campusId.toString());
+            }
+            // Tell backend where to redirect after login
+            params.append('redirectUri', REDIRECT_URI);
+
+            const googleLoginUrl = `${BACKEND_ROOT_URL}/api/auth/google-login?${params.toString()}`;
+            console.log('Opening Google Login URL:', googleLoginUrl);
+
             // Open browser for Google login
             const result = await WebBrowser.openAuthSessionAsync(
-                GOOGLE_LOGIN_URL,
-                CALLBACK_URL
+                googleLoginUrl,
+                REDIRECT_URI
             );
 
+            console.log('WebBrowser result:', result.type);
+
             if (result.type === 'success' && result.url) {
+                console.log('Callback URL received:', result.url);
                 // Extract token from callback URL
                 const url = new URL(result.url);
                 const token = url.searchParams.get('token');
@@ -52,28 +79,36 @@ export const useGoogleAuth = () => {
                     return { success: true, token };
                 } else {
                     setIsLoading(false);
-                    return { success: false, error: 'No token received' };
+                    return { success: false, error: 'Không nhận được token từ server' };
                 }
             } else if (result.type === 'cancel') {
                 setIsLoading(false);
                 return { success: false, error: 'User cancelled' };
             } else {
                 setIsLoading(false);
-                return { success: false, error: 'Login failed' };
+                return { success: false, error: 'Đăng nhập thất bại' };
             }
         } catch (error) {
             console.error('Google login error:', error);
             setIsLoading(false);
-            return { success: false, error: 'Network error' };
+            return { success: false, error: 'Lỗi mạng' };
         }
     }, []);
 
-    const handleGoogleLogin = useCallback(async () => {
-        const result = await promptGoogleLogin();
+    /**
+     * Handle Google login with UI feedback
+     * @param campusId - The campus ID to associate with the user
+     */
+    const handleGoogleLogin = useCallback(async (campusId?: number) => {
+        if (!campusId) {
+            Alert.alert('Lỗi', 'Vui lòng chọn cơ sở trước khi đăng nhập bằng Google');
+            return false;
+        }
+
+        const result = await promptGoogleLogin(campusId);
 
         if (result.success) {
             Alert.alert('Thành công', 'Đăng nhập Google thành công!');
-            // Navigation will be handled by AuthContext watching the token
             return true;
         } else {
             if (result.error !== 'User cancelled') {
@@ -87,8 +122,10 @@ export const useGoogleAuth = () => {
         promptGoogleLogin,
         handleGoogleLogin,
         isLoading,
+        redirectUri: REDIRECT_URI, // Expose for debugging
     };
 };
+
 
 // Parse JWT token to extract user data
 const parseJwt = (token: string) => {
