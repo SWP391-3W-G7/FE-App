@@ -29,6 +29,7 @@ export interface CreateClaimPayload {
     evidenceTitle: string;
     evidenceDescription: string;
     campusId: number;
+    lostItemId?: number;
     evidenceImages?: { uri: string; type: string; name: string }[];
 }
 
@@ -42,6 +43,11 @@ export async function createClaimRequest(payload: CreateClaimPayload): Promise<M
     formData.append('EvidenceTitle', payload.evidenceTitle);
     formData.append('EvidenceDescription', payload.evidenceDescription);
     formData.append('CampusId', payload.campusId.toString());
+
+    // Append LostItemId nếu có
+    if (payload.lostItemId) {
+        formData.append('LostItemId', payload.lostItemId.toString());
+    }
 
     // Append images nếu có
     if (payload.evidenceImages && payload.evidenceImages.length > 0) {

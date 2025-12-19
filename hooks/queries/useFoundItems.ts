@@ -19,5 +19,17 @@ export function useFoundItems() {
     return useQuery({
         queryKey: foundItemsQueryKey,
         queryFn: getFoundItems,
+        // Handle both direct array responses and paginated object responses
+        select: (data) => {
+            if (Array.isArray(data)) {
+                return data;
+            }
+            // Handle paginated response structures
+            if (data && typeof data === 'object') {
+                // Common paginated response property names
+                return (data as any).data || (data as any).items || (data as any).content || [];
+            }
+            return [];
+        },
     });
 }

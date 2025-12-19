@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { AlertCircle, Lock, Mail } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { AlertCircle, Check, ChevronDown, Lock, Mail, MapPin, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,14 +18,32 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useCampuses } from '@/hooks/queries/useCampuses';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 export default function LoginScreen() {
     const router = useRouter();
     const { login, isLoggingIn, loginError } = useAuth();
-    const { handleGoogleLogin, isLoading: isGoogleLoading } = useGoogleAuth();
+    const { handleGoogleLogin, isLoading: isGoogleLoading, redirectUri } = useGoogleAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [selectedCampusId, setSelectedCampusId] = useState(0);
+    const [showCampusPicker, setShowCampusPicker] = useState(false);
+
+    // Fetch campuses for Google login
+    const { data: campuses = [], isLoading: isLoadingCampuses } = useCampuses();
+
+    // Set default campus when loaded
+    useEffect(() => {
+        if (campuses.length > 0 && selectedCampusId === 0) {
+            setSelectedCampusId(campuses[0].id);
+        }
+    }, [campuses]);
+
+    // Log redirect URI for debugging
+    useEffect(() => {
+        console.log('Current Redirect URI:', redirectUri);
+    }, [redirectUri]);
 
     const handleLogin = () => {
         if (!email || !password) {
@@ -36,12 +55,14 @@ export default function LoginScreen() {
     };
 
     const onGoogleLogin = async () => {
-        const success = await handleGoogleLogin();
+        const success = await handleGoogleLogin(selectedCampusId);
         if (success) {
             // Reload to trigger auth state change
             router.replace('/(tabs)/(home)' as any);
         }
     };
+
+    const selectedCampus = campuses.find((c) => c.id === selectedCampusId);
 
     const isDisabled = isLoggingIn || isGoogleLoading;
 
@@ -129,6 +150,29 @@ export default function LoginScreen() {
                             <View style={styles.divider} />
                         </View>
 
+                        {/* Campus Picker for Google Login */}
+                        <TouchableOpacity
+                            style={styles.inputGroup}
+                            onPress={() => setShowCampusPicker(true)}
+                            disabled={isDisabled || isLoadingCampuses}
+                        >
+                            <View style={styles.inputIcon}>
+                                <MapPin size={20} color="#667eea" />
+                            </View>
+                            <View style={styles.pickerButton}>
+                                {isLoadingCampuses ? (
+                                    <ActivityIndicator size="small" color="#667eea" />
+                                ) : (
+                                    <Text style={styles.pickerText}>
+                                        {selectedCampus?.description || 'Chọn cơ sở'}
+                                    </Text>
+                                )}
+                            </View>
+                            <View style={styles.pickerArrow}>
+                                <ChevronDown size={20} color="#94a3b8" />
+                            </View>
+                        </TouchableOpacity>
+
                         {/* Google Login Button */}
                         <TouchableOpacity
                             style={[styles.googleButton, isDisabled && styles.buttonDisabled]}
@@ -159,6 +203,72 @@ export default function LoginScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Campus Dropdown Modal */}
+            <Modal
+                visible={showCampusPicker}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowCampusPicker(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {/* Header with gradient */}
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.modalHeader}
+                        >
+                            <View style={styles.modalHeaderContent}>
+                                <MapPin size={20} color="#fff" />
+                                <Text style={styles.modalTitle}>Chọn cơ sở</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.modalCloseButton}
+                                onPress={() => setShowCampusPicker(false)}
+                            >
+                                <X size={22} color="#fff" />
+                            </TouchableOpacity>
+                        </LinearGradient>
+
+                        {/* Campus list */}
+                        <ScrollView style={styles.campusListModal} showsVerticalScrollIndicator={false}>
+                            {campuses.map((campus, index) => (
+                                <TouchableOpacity
+                                    key={campus.id}
+                                    style={[
+                                        styles.campusItem,
+                                        campus.id === selectedCampusId && styles.campusItemSelected,
+                                        index === campuses.length - 1 && styles.campusItemLast,
+                                    ]}
+                                    onPress={() => {
+                                        setSelectedCampusId(campus.id);
+                                        setShowCampusPicker(false);
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.campusItemContent}>
+                                        <Text
+                                            style={[
+                                                styles.campusItemText,
+                                                campus.id === selectedCampusId && styles.campusItemTextSelected,
+                                            ]}
+                                        >
+                                            {campus.description}
+                                        </Text>
+                                    </View>
+                                    {campus.id === selectedCampusId && (
+                                        <View style={styles.checkIcon}>
+                                            <Check size={20} color="#667eea" />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -232,6 +342,19 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1e293b',
     },
+    pickerButton: {
+        flex: 1,
+        height: 56,
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+    },
+    pickerArrow: {
+        paddingRight: 16,
+    },
+    pickerText: {
+        fontSize: 16,
+        color: '#1e293b',
+    },
     button: {
         backgroundColor: '#667eea',
         height: 56,
@@ -302,5 +425,80 @@ const styles = StyleSheet.create({
         color: '#667eea',
         fontSize: 14,
         fontWeight: 'bold' as const,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '70%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+    },
+    modalHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600' as const,
+        color: '#fff',
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    campusListModal: {
+        paddingVertical: 8,
+    },
+    campusItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        marginHorizontal: 12,
+        marginVertical: 4,
+        borderRadius: 12,
+        backgroundColor: '#f8fafc',
+    },
+    campusItemSelected: {
+        backgroundColor: '#ede9fe',
+        borderWidth: 2,
+        borderColor: '#667eea',
+    },
+    campusItemLast: {
+        marginBottom: 20,
+    },
+    campusItemContent: {
+        flex: 1,
+    },
+    campusItemText: {
+        fontSize: 16,
+        color: '#374151',
+    },
+    campusItemTextSelected: {
+        color: '#667eea',
+        fontWeight: '600' as const,
+    },
+    checkIcon: {
+        marginLeft: 12,
     },
 });

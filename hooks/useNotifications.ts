@@ -44,12 +44,20 @@ export const useNotifications = (token: string | null) => {
             return;
         }
 
-        const connection = createSignalRConnection(token);
-        connectionRef.current = connection;
+        let isMounted = true;
+        let retryCount = 0;
+        const maxRetries = 3;
+        const retryDelay = 2000; // 2 seconds base delay
 
-        connection
-            .start()
-            .then(() => {
+        const connect = async () => {
+            const connection = createSignalRConnection(token);
+            connectionRef.current = connection;
+
+            try {
+                await connection.start();
+
+                if (!isMounted) return;
+
                 console.log("SignalR Connected!");
                 setIsConnected(true);
                 setConnectionError(null);
@@ -80,15 +88,28 @@ export const useNotifications = (token: string | null) => {
                     // Add to state
                     setNotifications(prev => [newNotification, ...prev]);
                 });
-            })
-            .catch(err => {
-                console.error("SignalR Connection Error:", err);
+            } catch (err) {
+                if (!isMounted) return;
+
+                // Silent logging - don't spam console.error
+                console.log(`SignalR: Connection attempt ${retryCount + 1}/${maxRetries} failed`);
+
                 setIsConnected(false);
-                setConnectionError(err.message || "Connection failed");
-            });
+                setConnectionError("Notification service unavailable");
+
+                // Retry with exponential backoff
+                if (retryCount < maxRetries - 1) {
+                    retryCount++;
+                    setTimeout(connect, retryDelay * Math.pow(2, retryCount));
+                }
+            }
+        };
+
+        connect();
 
         // Cleanup on unmount
         return () => {
+            isMounted = false;
             if (connectionRef.current) {
                 connectionRef.current.stop();
                 connectionRef.current = null;

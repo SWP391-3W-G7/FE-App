@@ -6,12 +6,15 @@
 import { API_ENDPOINTS } from '@/constants/api';
 import type { FoundItemResponse } from '@/types';
 import { apiClient, apiClientFormData } from './api';
+import type { PaginatedResponse } from './lostItems';
 
 /**
- * Lấy danh sách Found Items
+ * Lấy danh sách Found Items (with pagination, only Stored items)
  */
-export async function getFoundItems(): Promise<FoundItemResponse[]> {
-    return apiClient<FoundItemResponse[]>(API_ENDPOINTS.FOUND_ITEMS);
+export async function getFoundItems(): Promise<PaginatedResponse<FoundItemResponse>> {
+    return apiClient<PaginatedResponse<FoundItemResponse>>(
+        `${API_ENDPOINTS.FOUND_ITEMS}?Status=Stored&PageNumber=1&PageSize=50`
+    );
 }
 
 /**

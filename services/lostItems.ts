@@ -8,10 +8,25 @@ import type { LostItemResponse } from '@/types';
 import { apiClient, apiClientFormData } from './api';
 
 /**
- * Lấy danh sách Lost Items
+ * Paginated response structure from the API
  */
-export async function getLostItems(): Promise<LostItemResponse[]> {
-    return apiClient<LostItemResponse[]>(API_ENDPOINTS.LOST_ITEMS);
+export interface PaginatedResponse<T> {
+    currentPage: number;
+    totalPages: number;
+    pageSize: number;
+    totalCount: number;
+    hasPrevious: boolean;
+    hasNext: boolean;
+    items: T[];
+}
+
+/**
+ * Lấy danh sách Lost Items (with pagination)
+ */
+export async function getLostItems(): Promise<PaginatedResponse<LostItemResponse>> {
+    return apiClient<PaginatedResponse<LostItemResponse>>(
+        `${API_ENDPOINTS.LOST_ITEMS}?PageNumber=1&PageSize=50`
+    );
 }
 
 /**
@@ -19,6 +34,14 @@ export async function getLostItems(): Promise<LostItemResponse[]> {
  */
 export async function getLostItemById(id: number): Promise<LostItemResponse> {
     return apiClient<LostItemResponse>(`${API_ENDPOINTS.LOST_ITEMS}/${id}`);
+}
+
+/**
+ * Lấy danh sách Lost Items của current user
+ * API returns direct array (not paginated)
+ */
+export async function getMyLostItems(): Promise<LostItemResponse[]> {
+    return apiClient<LostItemResponse[]>(`${API_ENDPOINTS.LOST_ITEMS}/my-lost-items`);
 }
 
 /**

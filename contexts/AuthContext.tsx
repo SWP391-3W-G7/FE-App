@@ -123,8 +123,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             console.log(`Response status: ${response.status} (took ${elapsed}ms)`);
 
             if (!response.ok) {
+                const errorBody = await response.text();
                 console.error('Registration failed with status:', response.status);
-                throw new Error('Registration failed');
+                console.error('Error response body:', errorBody);
+                throw new Error(errorBody || 'Registration failed');
             }
 
             const result = await response.json() as User;

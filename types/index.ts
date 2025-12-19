@@ -21,6 +21,7 @@ export interface RegisterRequest {
     password: string;
     fullName: string;
     campusId: number;
+    phoneNumber?: string;
 }
 
 export interface LoginResponse {

@@ -5,12 +5,13 @@ import {
     Building2,
     Calendar,
     Camera,
+    ChevronDown,
     ChevronLeft,
     FileText,
     MapPin,
     Tag,
     UserCheck,
-    X,
+    X
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -31,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateClaim } from '@/hooks/mutations/useCreateClaim';
 import { useFoundItemDetail } from '@/hooks/queries/useFoundItemDetail';
+import { useMyLostItems } from '@/hooks/queries/useMyLostItems';
 import { formatRelativeDate } from '@/utils/date';
 import { getCategoryColor, getStatusColor } from '@/utils/status';
 
@@ -54,9 +56,12 @@ export default function FoundItemDetailScreen() {
     const [evidenceTitle, setEvidenceTitle] = useState('');
     const [evidenceDescription, setEvidenceDescription] = useState('');
     const [evidenceImages, setEvidenceImages] = useState<ImageFile[]>([]);
+    const [selectedLostItemId, setSelectedLostItemId] = useState<number | undefined>(undefined);
+    const [showLostItemPicker, setShowLostItemPicker] = useState(false);
 
     const itemId = parseInt(id || '0', 10);
     const { data: item, isLoading, isRefetching, refetch, error } = useFoundItemDetail(itemId);
+    const { data: myLostItems, isLoading: isLoadingLostItems } = useMyLostItems();
     const createClaimMutation = useCreateClaim();
 
     const handleBack = () => {
@@ -72,6 +77,8 @@ export default function FoundItemDetailScreen() {
         setEvidenceTitle('');
         setEvidenceDescription('');
         setEvidenceImages([]);
+        setSelectedLostItemId(undefined);
+        setShowLostItemPicker(false);
     };
 
     const handlePickImage = async () => {
@@ -102,22 +109,15 @@ export default function FoundItemDetailScreen() {
     };
 
     const handleSubmitClaim = async () => {
-        if (!evidenceTitle.trim()) {
-            Alert.alert('Lỗi', 'Vui lòng nhập tiêu đề bằng chứng');
-            return;
-        }
-        if (!evidenceDescription.trim()) {
-            Alert.alert('Lỗi', 'Vui lòng nhập mô tả bằng chứng');
-            return;
-        }
         if (!item) return;
 
         try {
             await createClaimMutation.mutateAsync({
                 foundItemId: item.foundItemId,
-                evidenceTitle: evidenceTitle.trim(),
-                evidenceDescription: evidenceDescription.trim(),
+                evidenceTitle: evidenceTitle.trim() || '',
+                evidenceDescription: evidenceDescription.trim() || '',
                 campusId: item.campusId,
+                lostItemId: selectedLostItemId,
                 evidenceImages: evidenceImages.length > 0 ? evidenceImages : undefined,
             });
 
@@ -326,9 +326,78 @@ export default function FoundItemDetailScreen() {
                                 <Text style={styles.claimItemName}>{item.title}</Text>
                             </View>
 
+                            {/* Lost Item Picker - Link to existing lost report */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Liên kết báo cáo mất đồ (tùy chọn)</Text>
+                                <Text style={styles.inputHelper}>Liên kết với báo cáo mất đồ của bạn để tăng độ ưu tiên</Text>
+
+                                <TouchableOpacity
+                                    style={styles.pickerButton}
+                                    onPress={() => setShowLostItemPicker(!showLostItemPicker)}
+                                >
+                                    <Text style={[
+                                        styles.pickerButtonText,
+                                        !selectedLostItemId && styles.pickerButtonPlaceholder
+                                    ]}>
+                                        {selectedLostItemId
+                                            ? myLostItems?.find(i => i.lostItemId === selectedLostItemId)?.title || 'Đã chọn'
+                                            : 'Chọn báo cáo mất đồ...'
+                                        }
+                                    </Text>
+                                    <ChevronDown size={20} color="#64748b" />
+                                </TouchableOpacity>
+
+                                {/* Dropdown list */}
+                                {showLostItemPicker && (
+                                    <View style={styles.pickerDropdown}>
+                                        {isLoadingLostItems ? (
+                                            <ActivityIndicator size="small" color="#10b981" style={{ padding: 16 }} />
+                                        ) : myLostItems && myLostItems.length > 0 ? (
+                                            <ScrollView
+                                                nestedScrollEnabled={true}
+                                                style={{ maxHeight: 180 }}
+                                                showsVerticalScrollIndicator={true}
+                                            >
+                                                <TouchableOpacity
+                                                    style={[styles.pickerOption, !selectedLostItemId && styles.pickerOptionSelected]}
+                                                    onPress={() => {
+                                                        setSelectedLostItemId(undefined);
+                                                        setShowLostItemPicker(false);
+                                                    }}
+                                                >
+                                                    <Text style={styles.pickerOptionText}>Không liên kết</Text>
+                                                </TouchableOpacity>
+                                                {myLostItems.map((lostItem) => (
+                                                    <TouchableOpacity
+                                                        key={lostItem.lostItemId}
+                                                        style={[
+                                                            styles.pickerOption,
+                                                            selectedLostItemId === lostItem.lostItemId && styles.pickerOptionSelected
+                                                        ]}
+                                                        onPress={() => {
+                                                            setSelectedLostItemId(lostItem.lostItemId);
+                                                            setShowLostItemPicker(false);
+                                                        }}
+                                                    >
+                                                        <Text style={styles.pickerOptionText} numberOfLines={1}>
+                                                            {lostItem.title}
+                                                        </Text>
+                                                        <Text style={styles.pickerOptionSubtext}>
+                                                            {lostItem.categoryName} • {lostItem.status}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        ) : (
+                                            <Text style={styles.noLostItemsText}>Bạn chưa có báo cáo mất đồ nào</Text>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+
                             {/* Evidence Title */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Tiêu đề bằng chứng *</Text>
+                                <Text style={styles.inputLabel}>Tiêu đề bằng chứng</Text>
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="VD: Đây là ví của tôi"
@@ -340,7 +409,7 @@ export default function FoundItemDetailScreen() {
 
                             {/* Evidence Description */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Mô tả chi tiết *</Text>
+                                <Text style={styles.inputLabel}>Mô tả chi tiết</Text>
                                 <TextInput
                                     style={[styles.textInput, styles.textArea]}
                                     placeholder="Mô tả chi tiết đặc điểm nhận dạng của món đồ..."
@@ -752,5 +821,63 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#fff',
+    },
+
+    // Lost Item Picker styles
+    inputHelper: {
+        fontSize: 12,
+        color: '#94a3b8',
+        marginBottom: 8,
+    },
+    pickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    pickerButtonText: {
+        fontSize: 16,
+        color: '#1e293b',
+        flex: 1,
+    },
+    pickerButtonPlaceholder: {
+        color: '#94a3b8',
+    },
+    pickerDropdown: {
+        marginTop: 8,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        maxHeight: 200,
+        overflow: 'hidden',
+    },
+    pickerOption: {
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    pickerOptionSelected: {
+        backgroundColor: '#f0fdf4',
+    },
+    pickerOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1e293b',
+    },
+    pickerOptionSubtext: {
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 2,
+    },
+    noLostItemsText: {
+        padding: 16,
+        fontSize: 14,
+        color: '#94a3b8',
+        textAlign: 'center',
     },
 });
