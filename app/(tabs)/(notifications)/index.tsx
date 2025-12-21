@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, BellOff, CheckCheck, Trash2 } from 'lucide-react-native';
-import React from 'react';
+import { Bell, BellOff, CheckCheck, Trash2, X } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
+    Modal,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -29,7 +31,8 @@ export default function NotificationsScreen() {
         clearNotifications,
     } = useNotifications(token);
 
-    const [refreshing, setRefreshing] = React.useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -37,19 +40,26 @@ export default function NotificationsScreen() {
         setTimeout(() => setRefreshing(false), 1000);
     };
 
+    const handleNotificationPress = (item: Notification) => {
+        setSelectedNotification(item);
+        if (!item.isRead) {
+            markAsRead(item.id);
+        }
+    };
+
     const renderNotificationItem = ({ item }: { item: Notification }) => (
         <TouchableOpacity
             style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
-            onPress={() => markAsRead(item.id)}
+            onPress={() => handleNotificationPress(item)}
             activeOpacity={0.7}
         >
             <View style={[styles.iconContainer, !item.isRead && styles.unreadIconContainer]}>
-                <Bell size={20} color={item.isRead ? '#94a3b8' : '#667eea'} />
+                <Bell size={20} color={item.isRead ? '#94a3b8' : '#0f172a'} />
             </View>
             <View style={styles.contentContainer}>
                 <View style={styles.headerRow}>
                     <Text style={[styles.title, !item.isRead && styles.unreadTitle]} numberOfLines={1}>
-                        {item.title || 'Thông báo'}
+                        {item.title || 'Notification'}
                     </Text>
                     {!item.isRead && <View style={styles.unreadDot} />}
                 </View>
@@ -66,9 +76,9 @@ export default function NotificationsScreen() {
             <View style={styles.emptyIconContainer}>
                 <BellOff size={48} color="#94a3b8" />
             </View>
-            <Text style={styles.emptyTitle}>Chưa có thông báo</Text>
+            <Text style={styles.emptyTitle}>No notifications yet</Text>
             <Text style={styles.emptySubtitle}>
-                Các thông báo mới sẽ xuất hiện ở đây
+                New notifications will appear here
             </Text>
         </View>
     );
@@ -78,7 +88,7 @@ export default function NotificationsScreen() {
             return (
                 <View style={styles.connectionError}>
                     <Text style={styles.connectionErrorText}>
-                        ⚠️ Không thể kết nối: {connectionError}
+                        ⚠️ Could not connect: {connectionError}
                     </Text>
                 </View>
             );
@@ -87,8 +97,8 @@ export default function NotificationsScreen() {
         if (!isConnected && token) {
             return (
                 <View style={styles.connecting}>
-                    <ActivityIndicator size="small" color="#667eea" />
-                    <Text style={styles.connectingText}>Đang kết nối...</Text>
+                    <ActivityIndicator size="small" color="#0f172a" />
+                    <Text style={styles.connectingText}>Connecting...</Text>
                 </View>
             );
         }
@@ -100,17 +110,17 @@ export default function NotificationsScreen() {
         <View style={styles.container}>
             {/* Header */}
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
             >
                 <View style={styles.headerContent}>
                     <View>
-                        <Text style={styles.headerTitle}>Thông báo</Text>
+                        <Text style={styles.headerTitle}>Notifications</Text>
                         {unreadCount > 0 && (
                             <Text style={styles.headerSubtitle}>
-                                {unreadCount} thông báo chưa đọc
+                                {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
                             </Text>
                         )}
                     </View>
@@ -140,7 +150,7 @@ export default function NotificationsScreen() {
                 <View style={styles.statusBar}>
                     <View style={[styles.statusDot, isConnected ? styles.statusConnected : styles.statusDisconnected]} />
                     <Text style={styles.statusText}>
-                        {isConnected ? 'Đã kết nối' : 'Chưa kết nối'}
+                        {isConnected ? 'Connected' : 'Not connected'}
                     </Text>
                 </View>
             </LinearGradient>
@@ -162,11 +172,54 @@ export default function NotificationsScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor="#667eea"
+                        tintColor="#0f172a"
                     />
                 }
                 showsVerticalScrollIndicator={false}
             />
+
+            {/* Notification Detail Modal */}
+            <Modal
+                transparent
+                visible={!!selectedNotification}
+                animationType="fade"
+                onRequestClose={() => setSelectedNotification(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={[styles.modalHeader, !selectedNotification?.isRead && styles.modalHeaderUnread]}>
+                            <View style={styles.modalIconContainer}>
+                                <Bell size={24} color={selectedNotification?.isRead ? '#64748b' : '#0f172a'} />
+                            </View>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => setSelectedNotification(null)}
+                            >
+                                <X size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                            <Text style={styles.modalTitle}>{selectedNotification?.title}</Text>
+                            <Text style={styles.modalTimestamp}>
+                                {selectedNotification && formatRelativeDate(selectedNotification.createdAt.toISOString())}
+                                {' • '}
+                                {selectedNotification && selectedNotification.createdAt.toLocaleString()}
+                            </Text>
+                            <Text style={styles.modalMessage}>{selectedNotification?.message}</Text>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.modalCloseButton}
+                                onPress={() => setSelectedNotification(null)}
+                            >
+                                <Text style={styles.modalCloseButtonText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -252,7 +305,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     connectingText: {
-        color: '#667eea',
+        color: '#0f172a',
         fontSize: 13,
     },
     listContent: {
@@ -277,7 +330,7 @@ const styles = StyleSheet.create({
     unreadCard: {
         backgroundColor: '#f8faff',
         borderLeftWidth: 3,
-        borderLeftColor: '#667eea',
+        borderLeftColor: '#0f172a',
     },
     iconContainer: {
         width: 44,
@@ -313,7 +366,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         marginLeft: 8,
     },
     message: {
@@ -351,5 +404,80 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         textAlign: 'center',
         paddingHorizontal: 40,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        maxHeight: '80%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 8,
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    modalHeaderUnread: {
+        backgroundColor: '#f8faff',
+    },
+    modalIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    closeButton: {
+        marginLeft: 'auto',
+        padding: 8,
+    },
+    modalBody: {
+        padding: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#0f172a',
+        marginBottom: 8,
+    },
+    modalTimestamp: {
+        fontSize: 14,
+        color: '#94a3b8',
+        marginBottom: 16,
+    },
+    modalMessage: {
+        fontSize: 16,
+        color: '#334155',
+        lineHeight: 24,
+    },
+    modalFooter: {
+        padding: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+    },
+    modalCloseButton: {
+        backgroundColor: '#f1f5f9',
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    modalCloseButtonText: {
+        color: '#0f172a',
+        fontWeight: '600',
+        fontSize: 16,
     },
 });

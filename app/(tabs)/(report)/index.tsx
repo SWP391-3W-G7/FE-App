@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, FileQuestion, FileText, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,13 +15,21 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StudentIdCardPrompt } from '@/components/StudentIdCardPrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateFoundItem } from '@/hooks/mutations/useCreateFoundItem';
 import { useCreateLostItem } from '@/hooks/mutations/useCreateLostItem';
 import { useCampuses } from '@/hooks/queries/useCampuses';
 import { useCategories } from '@/hooks/queries/useCategories';
+import { useUserProfile } from '@/hooks/queries/useUserProfile';
 
 type ReportType = 'lost' | 'found';
 
@@ -31,8 +39,14 @@ interface ImageFile {
   name: string;
 }
 
+// Header animation constants
+const HEADER_EXPANDED_HEIGHT = 120;
+const HEADER_COLLAPSED_HEIGHT = 60;
+const HEADER_SCROLL_DISTANCE = HEADER_EXPANDED_HEIGHT - HEADER_COLLAPSED_HEIGHT;
+
 export default function ReportScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [reportType, setReportType] = useState<ReportType>('lost');
   const [formData, setFormData] = useState({
     title: '',
@@ -45,6 +59,41 @@ export default function ReportScreen() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showCampusPicker, setShowCampusPicker] = useState(false);
+  const [showStudentIdPrompt, setShowStudentIdPrompt] = useState(false);
+
+  // Fetch user profile to check if student ID card is uploaded
+  const { data: userProfile, refetch: refetchProfile } = useUserProfile();
+
+  // Reanimated shared values - run on UI thread  
+  const scrollY = useSharedValue(0);
+
+  // Scroll handler - runs on UI thread (worklet)
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Animated styles - computed on UI thread
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const height = interpolate(
+      scrollY.value,
+      [0, HEADER_SCROLL_DISTANCE],
+      [HEADER_EXPANDED_HEIGHT, HEADER_COLLAPSED_HEIGHT],
+      'clamp'
+    );
+    return { height: height + insets.top };
+  });
+
+  const contentAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, HEADER_SCROLL_DISTANCE / 2],
+      [1, 0],
+      'clamp'
+    );
+    return { opacity };
+  });
 
   // Fetch categories và campuses từ API
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
@@ -54,9 +103,20 @@ export default function ReportScreen() {
   const createLostItemMutation = useCreateLostItem();
   const createFoundItemMutation = useCreateFoundItem();
 
+  // Get user's campus from user data
+  const userCampusId = user?.campusId || 0;
+  const userCampus = campuses.find((c) => c.campusId === userCampusId);
+
+  // When switching to Found Item, auto-set campus to user's campus
+  useEffect(() => {
+    if (reportType === 'found' && userCampusId > 0) {
+      setFormData((prev) => ({ ...prev, campusId: userCampusId }));
+    }
+  }, [reportType, userCampusId]);
+
   // Lấy tên category/campus hiện tại
   const selectedCategory = categories.find((c) => c.categoryId === formData.categoryId);
-  const selectedCampus = campuses.find((c) => c.id === formData.campusId);
+  const selectedCampus = campuses.find((c) => c.campusId === formData.campusId);
 
   // Image picker
   const pickImage = async () => {
@@ -67,10 +127,10 @@ export default function ReportScreen() {
     });
 
     if (!result.canceled) {
-      const newImages = result.assets.map((asset) => ({
+      const newImages = result.assets.map((asset, index) => ({
         uri: asset.uri,
         type: asset.mimeType || 'image/jpeg',
-        name: asset.fileName || `image_${Date.now()}.jpg`,
+        name: asset.fileName || `image_${Date.now()}_${index}.jpg`,
       }));
       setImages([...images, ...newImages]);
     }
@@ -93,6 +153,12 @@ export default function ReportScreen() {
 
     if (formData.campusId === 0) {
       Alert.alert('Error', 'Please select a campus');
+      return;
+    }
+
+    // Check if student ID card is uploaded
+    if (!userProfile?.studentIdCardUrl) {
+      setShowStudentIdPrompt(true);
       return;
     }
 
@@ -167,17 +233,20 @@ export default function ReportScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <SafeAreaView edges={['top']}>
-          <Text style={styles.headerTitle}>Report an Item</Text>
-          <Text style={styles.headerSubtitle}>Help reunite lost items with their owners</Text>
-        </SafeAreaView>
-      </LinearGradient>
+      {/* Collapsible Header */}
+      <Animated.View style={headerAnimatedStyle}>
+        <LinearGradient
+          colors={['#0f172a', '#1e293b']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top }]}
+        >
+          {/* Collapsible subtitle */}
+          <Animated.View style={[styles.collapsibleContent, contentAnimatedStyle]}>
+            <Text style={styles.headerSubtitle}>Help reunite lost items with their owners</Text>
+          </Animated.View>
+        </LinearGradient>
+      </Animated.View>
 
       <View style={styles.typeSelector}>
         <TouchableOpacity
@@ -186,7 +255,7 @@ export default function ReportScreen() {
         >
           <FileQuestion
             size={24}
-            color={reportType === 'lost' ? '#fff' : '#667eea'}
+            color={reportType === 'lost' ? '#fff' : '#0f172a'}
           />
           <Text style={[styles.typeText, reportType === 'lost' && styles.typeTextActive]}>
             Lost Item
@@ -198,7 +267,7 @@ export default function ReportScreen() {
         >
           <FileText
             size={24}
-            color={reportType === 'found' ? '#fff' : '#667eea'}
+            color={reportType === 'found' ? '#fff' : '#0f172a'}
           />
           <Text style={[styles.typeText, reportType === 'found' && styles.typeTextActive]}>
             Found Item
@@ -210,10 +279,12 @@ export default function ReportScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.formContainer}
       >
-        <ScrollView
+        <Animated.ScrollView
           style={styles.form}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={scrollHandler}
+          scrollEventThrottle={1}
         >
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
@@ -270,7 +341,7 @@ export default function ReportScreen() {
             {showCategoryPicker && (
               <View style={styles.pickerOptions}>
                 {isLoadingCategories ? (
-                  <ActivityIndicator size="small" color="#667eea" />
+                  <ActivityIndicator size="small" color="#0f172a" />
                 ) : (
                   categories.map((cat) => (
                     <TouchableOpacity
@@ -303,42 +374,57 @@ export default function ReportScreen() {
             <Text style={styles.label}>
               Campus <Text style={styles.required}>*</Text>
             </Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() => setShowCampusPicker(!showCampusPicker)}
-            >
-              <Text style={styles.pickerText}>
-                {selectedCampus?.name || 'Select campus...'}
-              </Text>
-            </TouchableOpacity>
-            {showCampusPicker && (
-              <View style={styles.pickerOptions}>
-                {isLoadingCampuses ? (
-                  <ActivityIndicator size="small" color="#667eea" />
-                ) : (
-                  campuses.map((campus) => (
-                    <TouchableOpacity
-                      key={campus.id}
-                      style={[
-                        styles.pickerOption,
-                        campus.id === formData.campusId && styles.pickerOptionSelected,
-                      ]}
-                      onPress={() => {
-                        setFormData({ ...formData, campusId: campus.id });
-                        setShowCampusPicker(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.pickerOptionText,
-                          campus.id === formData.campusId && styles.pickerOptionTextSelected,
-                        ]}
-                      >
-                        {campus.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+            {reportType === 'lost' ? (
+              // Lost Item: Allow selecting any campus
+              <>
+                <TouchableOpacity
+                  style={styles.picker}
+                  onPress={() => setShowCampusPicker(!showCampusPicker)}
+                >
+                  <Text style={styles.pickerText}>
+                    {selectedCampus?.campusName || 'Select campus...'}
+                  </Text>
+                </TouchableOpacity>
+                {showCampusPicker && (
+                  <View style={styles.pickerOptions}>
+                    {isLoadingCampuses ? (
+                      <ActivityIndicator size="small" color="#0f172a" />
+                    ) : (
+                      campuses.map((campus) => (
+                        <TouchableOpacity
+                          key={campus.campusId}
+                          style={[
+                            styles.pickerOption,
+                            campus.campusId === formData.campusId && styles.pickerOptionSelected,
+                          ]}
+                          onPress={() => {
+                            setFormData({ ...formData, campusId: campus.campusId });
+                            setShowCampusPicker(false);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.pickerOptionText,
+                              campus.campusId === formData.campusId && styles.pickerOptionTextSelected,
+                            ]}
+                          >
+                            {campus.campusName}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
                 )}
+              </>
+            ) : (
+              // Found Item: Only show user's campus (read-only)
+              <View style={[styles.picker, styles.pickerDisabled]}>
+                <Text style={styles.pickerText}>
+                  {userCampus?.campusName || 'Loading...'}
+                </Text>
+                <Text style={styles.campusHint}>
+                  Bạn chỉ có thể báo cáo tìm thấy đồ vật tại campus đã đăng ký
+                </Text>
               </View>
             )}
           </View>
@@ -372,7 +458,7 @@ export default function ReportScreen() {
           )}
 
           <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-            <Camera size={20} color="#667eea" />
+            <Camera size={20} color="#0f172a" />
             <Text style={styles.uploadText}>
               {images.length > 0 ? 'Add More Photos' : 'Add Photos'}
             </Text>
@@ -389,8 +475,26 @@ export default function ReportScreen() {
               <Text style={styles.submitButtonText}>Submit Report</Text>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Student ID Card Upload Modal */}
+      {showStudentIdPrompt && (
+        <View style={styles.studentIdPromptOverlay}>
+          <StudentIdCardPrompt
+            onUploadSuccess={() => {
+              setShowStudentIdPrompt(false);
+              refetchProfile();
+            }}
+          />
+          <TouchableOpacity
+            style={styles.closePromptButton}
+            onPress={() => setShowStudentIdPrompt(false)}
+          >
+            <Text style={styles.closePromptText}>Để sau</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -401,17 +505,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
+    flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 24,
+  },
+  titleBar: {
+    height: 44,
+    justifyContent: 'center',
+  },
+  collapsibleContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold' as const,
     color: '#fff',
-    marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#e0e7ff',
   },
   typeSelector: {
@@ -439,13 +551,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   typeButtonActive: {
-    backgroundColor: '#667eea',
-    borderColor: '#667eea',
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
   },
   typeText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: '#667eea',
+    color: '#0f172a',
   },
   typeTextActive: {
     color: '#fff',
@@ -514,7 +626,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
   },
   pickerOptionTextSelected: {
-    color: '#667eea',
+    color: '#0f172a',
     fontWeight: '600' as const,
   },
   uploadButton: {
@@ -524,7 +636,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: '#667eea',
+    borderColor: '#0f172a',
     borderRadius: 12,
     borderStyle: 'dashed',
     padding: 20,
@@ -533,15 +645,15 @@ const styles = StyleSheet.create({
   uploadText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: '#667eea',
+    color: '#0f172a',
   },
   submitButton: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#0f172a',
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 40,
-    shadowColor: '#667eea',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -578,5 +690,37 @@ const styles = StyleSheet.create({
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pickerDisabled: {
+    backgroundColor: '#f1f5f9',
+  },
+  campusHint: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  studentIdPromptOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  closePromptButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+  },
+  closePromptText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

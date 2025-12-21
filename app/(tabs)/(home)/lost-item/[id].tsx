@@ -45,7 +45,7 @@ export default function LostItemDetailScreen() {
     if (isLoading) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <ActivityIndicator size="large" color="#667eea" />
+                <ActivityIndicator size="large" color="#0f172a" />
                 <Text style={styles.loadingText}>Loading item details...</Text>
             </View>
         );
@@ -69,7 +69,7 @@ export default function LostItemDetailScreen() {
         <View style={styles.container}>
             {/* Header with back button */}
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
@@ -85,7 +85,7 @@ export default function LostItemDetailScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#667eea" />
+                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0f172a" />
                 }
                 showsVerticalScrollIndicator={false}
             >
@@ -154,7 +154,7 @@ export default function LostItemDetailScreen() {
                     <View style={styles.infoSection}>
                         <View style={styles.infoRow}>
                             <View style={styles.iconContainer}>
-                                <MapPin size={18} color="#667eea" />
+                                <MapPin size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Lost Location</Text>
@@ -166,7 +166,7 @@ export default function LostItemDetailScreen() {
 
                         <View style={styles.infoRow}>
                             <View style={styles.iconContainer}>
-                                <Calendar size={18} color="#667eea" />
+                                <Calendar size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Lost Date</Text>
@@ -186,7 +186,7 @@ export default function LostItemDetailScreen() {
 
                         <View style={styles.infoRow}>
                             <View style={styles.iconContainer}>
-                                <Building2 size={18} color="#667eea" />
+                                <Building2 size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Campus</Text>
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
@@ -443,11 +443,11 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     primaryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',
-        shadowColor: '#667eea',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -464,11 +464,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#667eea',
+        borderColor: '#0f172a',
     },
     secondaryButtonText: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#667eea',
+        color: '#0f172a',
     },
 });

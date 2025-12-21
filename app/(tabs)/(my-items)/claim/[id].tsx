@@ -48,8 +48,8 @@ export default function ClaimDetailScreen() {
     if (isLoading) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <ActivityIndicator size="large" color="#667eea" />
-                <Text style={styles.loadingText}>Đang tải...</Text>
+                <ActivityIndicator size="large" color="#0f172a" />
+                <Text style={styles.loadingText}>Loading...</Text>
             </View>
         );
     }
@@ -69,7 +69,7 @@ export default function ClaimDetailScreen() {
         <View style={styles.container}>
             {/* Header */}
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
@@ -85,14 +85,14 @@ export default function ClaimDetailScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#667eea" />
+                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0f172a" />
                 }
                 showsVerticalScrollIndicator={false}
             >
                 {/* Status Card */}
                 <View style={styles.statusCard}>
                     <View style={styles.statusHeader}>
-                        <Package size={24} color="#667eea" />
+                        <Package size={24} color="#0f172a" />
                         <Text style={styles.itemTitle}>
                             {claim.foundItemTitle || `Claim #${claim.claimId}`}
                         </Text>
@@ -110,7 +110,7 @@ export default function ClaimDetailScreen() {
                     <View style={styles.infoSection}>
                         <View style={styles.infoRow}>
                             <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
-                                <Calendar size={18} color="#667eea" />
+                                <Calendar size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Ngày yêu cầu</Text>
@@ -130,7 +130,7 @@ export default function ClaimDetailScreen() {
 
                         <View style={styles.infoRow}>
                             <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
-                                <User size={18} color="#667eea" />
+                                <User size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Người yêu cầu</Text>
@@ -148,7 +148,7 @@ export default function ClaimDetailScreen() {
                         {claim.evidences.map((evidence) => (
                             <View key={evidence.evidenceId} style={styles.evidenceItem}>
                                 <View style={styles.evidenceHeader}>
-                                    <FileText size={16} color="#667eea" />
+                                    <FileText size={16} color="#0f172a" />
                                     <Text style={styles.evidenceTitle}>{evidence.title}</Text>
                                 </View>
                                 <Text style={styles.evidenceDescription}>{evidence.description}</Text>
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         marginTop: 4,
         marginRight: 12,
     },
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     },
     logBy: {
         fontSize: 12,
-        color: '#667eea',
+        color: '#0f172a',
     },
     logDate: {
         fontSize: 12,

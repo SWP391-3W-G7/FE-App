@@ -45,8 +45,8 @@ export default function MyLostItemDetailScreen() {
     if (isLoading) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <ActivityIndicator size="large" color="#667eea" />
-                <Text style={styles.loadingText}>Đang tải...</Text>
+                <ActivityIndicator size="large" color="#0f172a" />
+                <Text style={styles.loadingText}>Loading...</Text>
             </View>
         );
     }
@@ -69,7 +69,7 @@ export default function MyLostItemDetailScreen() {
         <View style={styles.container}>
             {/* Header with back button - Purple theme for My Items */}
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
@@ -85,7 +85,7 @@ export default function MyLostItemDetailScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#667eea" />
+                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0f172a" />
                 }
                 showsVerticalScrollIndicator={false}
             >
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
