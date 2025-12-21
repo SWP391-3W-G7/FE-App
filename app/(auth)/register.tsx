@@ -1,10 +1,12 @@
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { AlertCircle, Check, ChevronDown, Lock, Mail, MapPin, Phone, User, X } from 'lucide-react-native';
+import { AlertCircle, Camera, Check, ChevronDown, Lock, Mail, MapPin, Phone, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -15,9 +17,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampuses } from '@/hooks/queries/useCampuses';
+
+interface ImageFile {
+    uri: string;
+    type: string;
+    name: string;
+}
 
 export default function RegisterScreen() {
     const { register, isRegistering, registerError } = useAuth();
@@ -27,42 +36,105 @@ export default function RegisterScreen() {
         email: '',
         password: '',
         fullName: '',
-        campusId: 0, // Default 0, sẽ được set khi fetch xong
+        campusName: '', // Changed to store campus name string
         phoneNumber: '',
     });
+    const [selectedCampusId, setSelectedCampusId] = useState(0);
     const [showCampusPicker, setShowCampusPicker] = useState(false);
+    const [studentIdCard, setStudentIdCard] = useState<ImageFile | null>(null);
 
     // Sử dụng React Query hook thay vì useState + useEffect + fetch
     const { data: campuses = [], isLoading: isLoadingCampuses } = useCampuses();
 
-    // Set default campusId khi campuses load xong
+    // Set default campus khi campuses load xong
     useEffect(() => {
-        if (campuses.length > 0 && formData.campusId === 0) {
-            setFormData(prev => ({ ...prev, campusId: campuses[0].id }));
+        if (campuses.length > 0 && selectedCampusId === 0) {
+            setSelectedCampusId(campuses[0].campusId);
+            setFormData(prev => ({ ...prev, campusName: campuses[0].campusName }));
         }
     }, [campuses]);
 
-    const handleRegister = () => {
-        if (!formData.username || !formData.email || !formData.password || !formData.fullName) {
-            Alert.alert('Error', 'Please fill in all fields');
+    // Email validation regex
+    const isValidEmail = (email: string) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // Pick student ID card image
+    const pickStudentIdCard = async () => {
+        // Request permission
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Thông báo', 'Cần quyền truy cập thư viện ảnh để chọn ảnh thẻ sinh viên');
             return;
         }
 
-        register(formData, {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            const fileName = asset.uri.split('/').pop() || 'student_id.jpg';
+            const fileType = asset.mimeType || 'image/jpeg';
+
+            setStudentIdCard({
+                uri: asset.uri,
+                type: fileType,
+                name: fileName,
+            });
+        }
+    };
+
+    const handleRegister = () => {
+        if (!formData.username || !formData.email || !formData.password || !formData.fullName) {
+            Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+            return;
+        }
+
+        // Validate email format
+        if (!isValidEmail(formData.email)) {
+            Alert.alert('Lỗi', 'Email không đúng định dạng');
+            return;
+        }
+
+        // Validate phone number (exactly 9 digits)
+        if (formData.phoneNumber && formData.phoneNumber.length !== 9) {
+            Alert.alert('Lỗi', 'Số điện thoại phải có đúng 9 chữ số');
+            return;
+        }
+
+        // Validate student ID card
+        if (!studentIdCard) {
+            Alert.alert('Lỗi', 'Vui lòng chọn ảnh thẻ sinh viên');
+            return;
+        }
+
+        register({
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            fullName: formData.fullName,
+            campusId: formData.campusName, // Send campus name string
+            phoneNumber: formData.phoneNumber || undefined,
+            studentIdCard: studentIdCard,
+        }, {
             onSuccess: () => {
-                Alert.alert('Success', 'Account created! Please log in.', [
+                Alert.alert('Thành công', 'Tài khoản đã được tạo! Vui lòng đăng đợi xác nhận từ admin.', [
                     { text: 'OK', onPress: () => router.replace('/(auth)/login' as any) },
                 ]);
             },
         });
     };
 
-    const selectedCampus = campuses.find((c) => c.id === formData.campusId);
+    const selectedCampus = campuses.find((c) => c.campusId === selectedCampusId);
 
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
@@ -92,7 +164,7 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <User size={20} color="#667eea" />
+                                <User size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -107,7 +179,7 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <User size={20} color="#667eea" />
+                                <User size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -122,7 +194,7 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <Mail size={20} color="#667eea" />
+                                <Mail size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -139,7 +211,7 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <Lock size={20} color="#667eea" />
+                                <Lock size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -155,15 +227,20 @@ export default function RegisterScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <Phone size={20} color="#667eea" />
+                                <Phone size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
-                                placeholder="Số điện thoại"
+                                placeholder="Số điện thoại (9 chữ số)"
                                 placeholderTextColor="#94a3b8"
                                 value={formData.phoneNumber}
-                                onChangeText={(text) => setFormData({ ...formData, phoneNumber: text })}
-                                keyboardType="phone-pad"
+                                onChangeText={(text) => {
+                                    // Only allow numeric input and limit to 9 digits
+                                    const numericText = text.replace(/[^0-9]/g, '').slice(0, 9);
+                                    setFormData({ ...formData, phoneNumber: numericText });
+                                }}
+                                keyboardType="number-pad"
+                                maxLength={9}
                                 autoCapitalize="none"
                                 editable={!isRegistering}
                             />
@@ -175,20 +252,53 @@ export default function RegisterScreen() {
                             disabled={isRegistering || isLoadingCampuses}
                         >
                             <View style={styles.inputIcon}>
-                                <MapPin size={20} color="#667eea" />
+                                <MapPin size={20} color="#0f172a" />
                             </View>
                             <View style={styles.pickerButton}>
                                 {isLoadingCampuses ? (
-                                    <ActivityIndicator size="small" color="#667eea" />
+                                    <ActivityIndicator size="small" color="#0f172a" />
                                 ) : (
                                     <Text style={styles.pickerText}>
-                                        {selectedCampus?.description || 'Chọn cơ sở'}
+                                        {selectedCampus?.campusName || 'Chọn cơ sở'}
                                     </Text>
                                 )}
                             </View>
                             <View style={styles.pickerArrow}>
                                 <ChevronDown size={20} color="#94a3b8" />
                             </View>
+                        </TouchableOpacity>
+
+                        {/* Student ID Card Picker */}
+                        <TouchableOpacity
+                            style={styles.imagePickerContainer}
+                            onPress={pickStudentIdCard}
+                            disabled={isRegistering}
+                        >
+                            {studentIdCard ? (
+                                <View style={styles.imagePreviewContainer}>
+                                    <Image
+                                        source={{ uri: studentIdCard.uri }}
+                                        style={styles.imagePreview}
+                                        resizeMode="cover"
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.removeImageButton}
+                                        onPress={() => setStudentIdCard(null)}
+                                    >
+                                        <X size={16} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <View style={styles.imagePlaceholder}>
+                                    <Camera size={32} color="#0f172a" />
+                                    <Text style={styles.imagePlaceholderText}>
+                                        Chọn ảnh thẻ sinh viên
+                                    </Text>
+                                    <Text style={styles.imagePlaceholderSubtext}>
+                                        Bắt buộc để xác minh tài khoản
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -223,10 +333,10 @@ export default function RegisterScreen() {
                 onRequestClose={() => setShowCampusPicker(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <SafeAreaView edges={['bottom']} style={styles.modalContent}>
                         {/* Header với gradient */}
                         <LinearGradient
-                            colors={['#667eea', '#764ba2']}
+                            colors={['#0f172a', '#1e293b']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.modalHeader}
@@ -247,14 +357,15 @@ export default function RegisterScreen() {
                         <ScrollView style={styles.campusListModal} showsVerticalScrollIndicator={false}>
                             {campuses.map((campus, index) => (
                                 <TouchableOpacity
-                                    key={campus.id}
+                                    key={campus.campusId}
                                     style={[
                                         styles.campusItem,
-                                        campus.id === formData.campusId && styles.campusItemSelected,
+                                        campus.campusId === selectedCampusId && styles.campusItemSelected,
                                         index === campuses.length - 1 && styles.campusItemLast,
                                     ]}
                                     onPress={() => {
-                                        setFormData({ ...formData, campusId: campus.id });
+                                        setSelectedCampusId(campus.campusId);
+                                        setFormData({ ...formData, campusName: campus.campusName });
                                         setShowCampusPicker(false);
                                     }}
                                     activeOpacity={0.7}
@@ -263,21 +374,21 @@ export default function RegisterScreen() {
                                         <Text
                                             style={[
                                                 styles.campusItemText,
-                                                campus.id === formData.campusId && styles.campusItemTextSelected,
+                                                campus.campusId === selectedCampusId && styles.campusItemTextSelected,
                                             ]}
                                         >
-                                            {campus.description}
+                                            {campus.campusName}
                                         </Text>
                                     </View>
-                                    {campus.id === formData.campusId && (
+                                    {campus.campusId === selectedCampusId && (
                                         <View style={styles.checkIcon}>
-                                            <Check size={20} color="#667eea" />
+                                            <Check size={20} color="#0f172a" />
                                         </View>
                                     )}
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
-                    </View>
+                    </SafeAreaView>
                 </View>
             </Modal>
         </View>
@@ -367,6 +478,46 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1e293b',
     },
+    // Image picker styles
+    imagePickerContainer: {
+        marginBottom: 16,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#e2e8f0',
+        borderStyle: 'dashed',
+        overflow: 'hidden',
+    },
+    imagePlaceholder: {
+        height: 120,
+        backgroundColor: '#f8fafc',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    imagePlaceholderText: {
+        fontSize: 16,
+        fontWeight: '600' as const,
+        color: '#0f172a',
+    },
+    imagePlaceholderSubtext: {
+        fontSize: 12,
+        color: '#94a3b8',
+    },
+    imagePreviewContainer: {
+        position: 'relative',
+    },
+    imagePreview: {
+        width: '100%',
+        height: 160,
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 12,
+        padding: 4,
+    },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -422,7 +573,7 @@ const styles = StyleSheet.create({
     campusItemSelected: {
         backgroundColor: '#ede9fe',
         borderWidth: 2,
-        borderColor: '#667eea',
+        borderColor: '#0f172a',
     },
     campusItemLast: {
         marginBottom: 20,
@@ -435,20 +586,20 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     campusItemTextSelected: {
-        color: '#667eea',
+        color: '#0f172a',
         fontWeight: '600' as const,
     },
     checkIcon: {
         marginLeft: 12,
     },
     button: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         height: 56,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 8,
-        shadowColor: '#667eea',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -473,7 +624,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     linkText: {
-        color: '#667eea',
+        color: '#0f172a',
         fontSize: 14,
         fontWeight: 'bold' as const,
     },

@@ -4,15 +4,15 @@
  */
 
 import { API_ENDPOINTS } from '@/constants/api';
-import type { CampusEnumValue } from '@/types';
+import type { Campus } from '@/types';
 import { apiClient } from './api';
 
 /**
- * Lấy danh sách Campus từ endpoint /Campus/enum-values
+ * Lấy danh sách Campus từ endpoint /Campus
  * Endpoint này không yêu cầu authentication
  */
-export async function getCampusEnumValues(): Promise<CampusEnumValue[]> {
-    return apiClient<CampusEnumValue[]>(API_ENDPOINTS.CAMPUSES, {
+export async function getCampuses(): Promise<Campus[]> {
+    return apiClient<Campus[]>(API_ENDPOINTS.CAMPUSES, {
         authenticated: false,
     });
 }

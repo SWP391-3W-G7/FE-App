@@ -20,8 +20,13 @@ export interface RegisterRequest {
     email: string;
     password: string;
     fullName: string;
-    campusId: number;
+    campusId: string; // Campus name string like "HoChiMinh", not numeric ID
     phoneNumber?: string;
+    studentIdCard?: {
+        uri: string;
+        type: string;
+        name: string;
+    };
 }
 
 export interface LoginResponse {

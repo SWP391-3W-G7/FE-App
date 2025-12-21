@@ -1,6 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 
@@ -16,6 +16,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
     const segments = useSegments();
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         loadStoredAuth();
@@ -23,11 +24,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     useEffect(() => {
         if (!isLoading) {
-            if (!token && segments[0] !== '(auth)') {
-                router.replace('/(auth)/login' as any);
-            } else if (token && segments[0] === '(auth)') {
-                router.replace('/(tabs)/(home)' as any);
-            }
+            // Add small delay to prevent Android ScreenStack crash during initial navigation
+            const timer = setTimeout(() => {
+                if (!token && segments[0] !== '(auth)') {
+                    router.replace('/(auth)/login' as any);
+                } else if (token && segments[0] === '(auth)') {
+                    router.replace('/(tabs)/(home)' as any);
+                }
+            }, 100);
+            return () => clearTimeout(timer);
         }
     }, [token, segments, isLoading, router]);
 
@@ -110,13 +115,32 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             const url = `${API_BASE_URL}${API_ENDPOINTS.REGISTER}`;
             console.log('========== REGISTER API CALL ==========');
             console.log('URL:', url);
-            console.log('Request body:', JSON.stringify(data, null, 2));
+            console.log('Register data:', JSON.stringify({ ...data, studentIdCard: data.studentIdCard ? '[Image]' : undefined }, null, 2));
             const startTime = Date.now();
+
+            // Use FormData for multipart/form-data
+            const formData = new FormData();
+            formData.append('Username', data.username);
+            formData.append('Email', data.email);
+            formData.append('Password', data.password);
+            formData.append('FullName', data.fullName);
+            formData.append('CampusId', data.campusId); // String like "HoChiMinh"
+            if (data.phoneNumber) {
+                formData.append('PhoneNumber', data.phoneNumber);
+            }
+            // Append student ID card image if provided
+            if (data.studentIdCard) {
+                formData.append('studentIdCard', {
+                    uri: data.studentIdCard.uri,
+                    type: data.studentIdCard.type,
+                    name: data.studentIdCard.name,
+                } as unknown as Blob);
+            }
 
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: formData,
+                // Don't set Content-Type, browser will set it with boundary for FormData
             });
 
             const elapsed = Date.now() - startTime;
@@ -142,6 +166,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     });
 
     const logout = async () => {
+        // Clear all React Query cache to prevent stale data for next user
+        queryClient.clear();
         await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
         setToken(null);
         setUser(null);
@@ -167,6 +193,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         login: loginMutation.mutate,
         register: registerMutation.mutate,
         logout,
+        refreshAuth: loadStoredAuth, // Allows external code to refresh auth state
         isLoggingIn: loginMutation.isPending,
         isRegistering: registerMutation.isPending,
         loginError: loginMutation.error,

@@ -3,7 +3,8 @@
  * Sử dụng @tanstack/react-query để quản lý server state
  */
 
-import { getCampusEnumValues } from '@/services/campuses';
+import { getCampuses } from '@/services/campuses';
+import { Campus } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 
 /**
@@ -17,9 +18,9 @@ export const campusesQueryKey = ['campuses'] as const;
  * staleTime set cao vì danh sách campus ít thay đổi
  */
 export function useCampuses() {
-    return useQuery({
+    return useQuery<Campus[]>({
         queryKey: campusesQueryKey,
-        queryFn: getCampusEnumValues,
+        queryFn: getCampuses,
         staleTime: 1000 * 60 * 60, // 1 hour - campus list rarely changes
     });
 }

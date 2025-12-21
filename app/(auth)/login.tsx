@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampuses } from '@/hooks/queries/useCampuses';
@@ -23,8 +24,8 @@ import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { login, isLoggingIn, loginError } = useAuth();
-    const { handleGoogleLogin, isLoading: isGoogleLoading, redirectUri } = useGoogleAuth();
+    const { login, isLoggingIn, loginError, refreshAuth } = useAuth();
+    const { signInWithGoogle, isLoading: isGoogleLoading } = useGoogleAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [selectedCampusId, setSelectedCampusId] = useState(0);
@@ -36,14 +37,9 @@ export default function LoginScreen() {
     // Set default campus when loaded
     useEffect(() => {
         if (campuses.length > 0 && selectedCampusId === 0) {
-            setSelectedCampusId(campuses[0].id);
+            setSelectedCampusId(campuses[0].campusId);
         }
     }, [campuses]);
-
-    // Log redirect URI for debugging
-    useEffect(() => {
-        console.log('Current Redirect URI:', redirectUri);
-    }, [redirectUri]);
 
     const handleLogin = () => {
         if (!email || !password) {
@@ -55,21 +51,56 @@ export default function LoginScreen() {
     };
 
     const onGoogleLogin = async () => {
-        const success = await handleGoogleLogin(selectedCampusId);
-        if (success) {
-            // Reload to trigger auth state change
-            router.replace('/(tabs)/(home)' as any);
+        const response = await signInWithGoogle(selectedCampusId);
+
+        console.log('========== GOOGLE LOGIN RESPONSE ==========');
+        console.log('Response:', response);
+
+        if (response) {
+            // Refresh AuthContext to pick up the new token from AsyncStorage
+            await refreshAuth();
+            console.log('Auth state refreshed');
+
+            // Navigate based on status and roleName as per backend plan
+            const { status, roleName } = response;
+            console.log('Status:', status);
+            console.log('RoleName:', roleName);
+
+            if (status === 'IdCardUploadNeeded') {
+                console.log('Navigating to upload-id-card');
+                router.replace('/(auth)/upload-id-card' as any);
+            } else if (status === 'Pending') {
+                console.log('Navigating to pending-approval');
+                router.replace('/(auth)/pending-approval' as any);
+            } else if (status === 'Active') {
+                // Navigate based on role
+                if (roleName === 'ADMIN') {
+                    console.log('Navigating to admin dashboard');
+                    router.replace('/(admin)/dashboard' as any);
+                } else if (roleName === 'STAFF') {
+                    console.log('Navigating to staff dashboard');
+                    router.replace('/(staff)/dashboard' as any);
+                } else {
+                    console.log('Navigating to home');
+                    router.replace('/(tabs)/(home)' as any);
+                }
+            } else {
+                console.log('Navigating to home (fallback)');
+                router.replace('/(tabs)/(home)' as any);
+            }
+        } else {
+            console.log('No response from Google login');
         }
     };
 
-    const selectedCampus = campuses.find((c) => c.id === selectedCampusId);
+    const selectedCampus = campuses.find((c) => c.campusId === selectedCampusId);
 
     const isDisabled = isLoggingIn || isGoogleLoading;
 
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
@@ -99,7 +130,7 @@ export default function LoginScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <Mail size={20} color="#667eea" />
+                                <Mail size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -116,7 +147,7 @@ export default function LoginScreen() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputIcon}>
-                                <Lock size={20} color="#667eea" />
+                                <Lock size={20} color="#0f172a" />
                             </View>
                             <TextInput
                                 style={styles.input}
@@ -157,14 +188,14 @@ export default function LoginScreen() {
                             disabled={isDisabled || isLoadingCampuses}
                         >
                             <View style={styles.inputIcon}>
-                                <MapPin size={20} color="#667eea" />
+                                <MapPin size={20} color="#0f172a" />
                             </View>
                             <View style={styles.pickerButton}>
                                 {isLoadingCampuses ? (
-                                    <ActivityIndicator size="small" color="#667eea" />
+                                    <ActivityIndicator size="small" color="#0f172a" />
                                 ) : (
                                     <Text style={styles.pickerText}>
-                                        {selectedCampus?.description || 'Chọn cơ sở'}
+                                        {selectedCampus?.campusName || 'Chọn cơ sở'}
                                     </Text>
                                 )}
                             </View>
@@ -212,10 +243,10 @@ export default function LoginScreen() {
                 onRequestClose={() => setShowCampusPicker(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <SafeAreaView edges={['bottom']} style={styles.modalContent}>
                         {/* Header with gradient */}
                         <LinearGradient
-                            colors={['#667eea', '#764ba2']}
+                            colors={['#0f172a', '#1e293b']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.modalHeader}
@@ -236,14 +267,14 @@ export default function LoginScreen() {
                         <ScrollView style={styles.campusListModal} showsVerticalScrollIndicator={false}>
                             {campuses.map((campus, index) => (
                                 <TouchableOpacity
-                                    key={campus.id}
+                                    key={campus.campusId}
                                     style={[
                                         styles.campusItem,
-                                        campus.id === selectedCampusId && styles.campusItemSelected,
+                                        campus.campusId === selectedCampusId && styles.campusItemSelected,
                                         index === campuses.length - 1 && styles.campusItemLast,
                                     ]}
                                     onPress={() => {
-                                        setSelectedCampusId(campus.id);
+                                        setSelectedCampusId(campus.campusId);
                                         setShowCampusPicker(false);
                                     }}
                                     activeOpacity={0.7}
@@ -252,21 +283,21 @@ export default function LoginScreen() {
                                         <Text
                                             style={[
                                                 styles.campusItemText,
-                                                campus.id === selectedCampusId && styles.campusItemTextSelected,
+                                                campus.campusId === selectedCampusId && styles.campusItemTextSelected,
                                             ]}
                                         >
-                                            {campus.description}
+                                            {campus.campusName}
                                         </Text>
                                     </View>
-                                    {campus.id === selectedCampusId && (
+                                    {campus.campusId === selectedCampusId && (
                                         <View style={styles.checkIcon}>
-                                            <Check size={20} color="#667eea" />
+                                            <Check size={20} color="#0f172a" />
                                         </View>
                                     )}
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
-                    </View>
+                    </SafeAreaView>
                 </View>
             </Modal>
         </View>
@@ -356,13 +387,13 @@ const styles = StyleSheet.create({
         color: '#1e293b',
     },
     button: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         height: 56,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 8,
-        shadowColor: '#667eea',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -422,7 +453,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     linkText: {
-        color: '#667eea',
+        color: '#0f172a',
         fontSize: 14,
         fontWeight: 'bold' as const,
     },
@@ -482,7 +513,7 @@ const styles = StyleSheet.create({
     campusItemSelected: {
         backgroundColor: '#ede9fe',
         borderWidth: 2,
-        borderColor: '#667eea',
+        borderColor: '#0f172a',
     },
     campusItemLast: {
         marginBottom: 20,
@@ -495,7 +526,7 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     campusItemTextSelected: {
-        color: '#667eea',
+        color: '#0f172a',
         fontWeight: '600' as const,
     },
     checkIcon: {

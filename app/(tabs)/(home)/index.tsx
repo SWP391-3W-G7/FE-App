@@ -4,18 +4,21 @@ import { ArrowUp, Filter, MapPin, Search } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+import Animated, {
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,9 +30,10 @@ import { getCategoryColor } from '@/utils/status';
 type TabType = 'lost' | 'found';
 
 // Header dimensions
-const HEADER_EXPANDED_HEIGHT = 180; // Full header with greeting + search
-const HEADER_COLLAPSED_HEIGHT = 56; // Just the title bar
+const HEADER_EXPANDED_HEIGHT = 180;
+const HEADER_COLLAPSED_HEIGHT = 56;
 const SCROLL_THRESHOLD = 50;
+const HEADER_SCROLL_DISTANCE = HEADER_EXPANDED_HEIGHT - HEADER_COLLAPSED_HEIGHT;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,17 +42,48 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('lost');
   const [searchQuery, setSearchQuery] = useState('');
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
-  const lastScrollY = useRef(0);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
 
-  // Animated values
-  const headerHeight = useRef(new Animated.Value(HEADER_EXPANDED_HEIGHT)).current;
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-  const fabOpacity = useRef(new Animated.Value(0)).current;
-  const fabScale = useRef(new Animated.Value(0)).current;
+  // Reanimated shared values - run on UI thread
+  const scrollY = useSharedValue(0);
+  const fabScale = useSharedValue(0);
+
+  // Scroll handler - runs on UI thread (worklet)
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Animated styles - computed on UI thread
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const height = interpolate(
+      scrollY.value,
+      [0, HEADER_SCROLL_DISTANCE],
+      [HEADER_EXPANDED_HEIGHT, HEADER_COLLAPSED_HEIGHT],
+      'clamp'
+    );
+    return { height: height + insets.top };
+  });
+
+  const contentAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, HEADER_SCROLL_DISTANCE / 2],
+      [1, 0],
+      'clamp'
+    );
+    return { opacity };
+  });
+
+  const fabAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: fabScale.value,
+      transform: [{ scale: fabScale.value }],
+    };
+  });
 
   // React Query hooks
   const {
@@ -76,91 +111,28 @@ export default function HomeScreen() {
     }
   };
 
-  // Collapse animation
-  const collapse = useCallback(() => {
-    if (isCollapsed) return;
-    setIsCollapsed(true);
-    Animated.parallel([
-      Animated.spring(headerHeight, {
-        toValue: HEADER_COLLAPSED_HEIGHT,
-        useNativeDriver: false,
-        tension: 100,
-        friction: 15,
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  }, [isCollapsed, headerHeight, contentOpacity]);
-
-  // Expand animation
-  const expand = useCallback(() => {
-    if (!isCollapsed) return;
-    setIsCollapsed(false);
-    Animated.parallel([
-      Animated.spring(headerHeight, {
-        toValue: HEADER_EXPANDED_HEIGHT,
-        useNativeDriver: false,
-        tension: 100,
-        friction: 15,
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  }, [isCollapsed, headerHeight, contentOpacity]);
-
   // FAB animations
   const showFab = useCallback(() => {
     setShowScrollToTop(true);
-    Animated.parallel([
-      Animated.spring(fabOpacity, { toValue: 1, useNativeDriver: true }),
-      Animated.spring(fabScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
-    ]).start();
-  }, [fabOpacity, fabScale]);
+    fabScale.value = withSpring(1, { damping: 15, stiffness: 150 });
+  }, [fabScale]);
 
   const hideFab = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fabOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.spring(fabScale, { toValue: 0, useNativeDriver: true }),
-    ]).start(() => setShowScrollToTop(false));
-  }, [fabOpacity, fabScale]);
-
-  // Scroll handler
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const currentScrollY = event.nativeEvent.contentOffset.y;
-      const isGoingDown = currentScrollY > lastScrollY.current;
-
-      // FAB visibility
-      if (currentScrollY > SCROLL_THRESHOLD && !showScrollToTop) showFab();
-      else if (currentScrollY <= SCROLL_THRESHOLD && showScrollToTop) hideFab();
-
-      // Header collapse/expand
-      if (isGoingDown && currentScrollY > 30 && !isCollapsed) collapse();
-      else if (!isGoingDown && currentScrollY < 30 && isCollapsed) expand();
-
-      lastScrollY.current = currentScrollY;
-    },
-    [showScrollToTop, showFab, hideFab, collapse, expand, isCollapsed]
-  );
+    fabScale.value = withSpring(0, { damping: 15, stiffness: 150 });
+    setTimeout(() => setShowScrollToTop(false), 200);
+  }, [fabScale]);
 
   const scrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    expand();
     hideFab();
-  }, [expand, hideFab]);
+  }, [hideFab]);
 
   return (
     <View style={styles.container}>
       {/* Collapsible Header */}
-      <Animated.View style={{ height: Animated.add(headerHeight, insets.top) }}>
+      <Animated.View style={headerAnimatedStyle}>
         <LinearGradient
-          colors={['#667eea', '#764ba2']}
+          colors={['#0f172a', '#1e293b']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.header, { paddingTop: insets.top }]}
@@ -171,7 +143,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Collapsible content */}
-          <Animated.View style={[styles.collapsibleContent, { opacity: contentOpacity }]}>
+          <Animated.View style={[styles.collapsibleContent, contentAnimatedStyle]}>
             <View style={styles.greetingRow}>
 
               <Text style={styles.campus}>{user?.campusName || 'Campus'}</Text>
@@ -189,7 +161,7 @@ export default function HomeScreen() {
                 />
               </View>
               <TouchableOpacity style={styles.filterButton}>
-                <Filter size={20} color="#667eea" />
+                <Filter size={20} color="#0f172a" />
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -221,15 +193,15 @@ export default function HomeScreen() {
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.listContent}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
+        scrollEventThrottle={1}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#667eea" />
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#0f172a" />
         }
       >
         {isLoading ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#667eea" />
+            <ActivityIndicator size="large" color="#0f172a" />
             <Text style={styles.loadingText}>Loading...</Text>
           </View>
         ) : activeTab === 'lost' ? (
@@ -311,7 +283,7 @@ export default function HomeScreen() {
       {/* Scroll to Top FAB */}
       {showScrollToTop && (
         <Animated.View
-          style={[styles.fab, { opacity: fabOpacity, transform: [{ scale: fabScale }], bottom: insets.bottom + 20 }]}
+          style={[styles.fab, fabAnimatedStyle, { bottom: insets.bottom + 20 }]}
         >
           <TouchableOpacity style={styles.fabButton} onPress={scrollToTop} activeOpacity={0.8}>
             <ArrowUp size={24} color="#fff" />
@@ -406,7 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#0f172a',
   },
   tabText: {
     fontSize: 14,
@@ -520,10 +492,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#667eea',
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#667eea',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,

@@ -46,8 +46,8 @@ export default function MyFoundItemDetailScreen() {
     if (isLoading) {
         return (
             <View style={[styles.container, styles.centerContent]}>
-                <ActivityIndicator size="large" color="#667eea" />
-                <Text style={styles.loadingText}>Đang tải...</Text>
+                <ActivityIndicator size="large" color="#0f172a" />
+                <Text style={styles.loadingText}>Loading...</Text>
             </View>
         );
     }
@@ -70,7 +70,7 @@ export default function MyFoundItemDetailScreen() {
         <View style={styles.container}>
             {/* Header with back button - Purple theme for My Items */}
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#0f172a', '#1e293b']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.header, { paddingTop: insets.top }]}
@@ -86,7 +86,7 @@ export default function MyFoundItemDetailScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
-                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#667eea" />
+                    <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#0f172a" />
                 }
                 showsVerticalScrollIndicator={false}
             >
@@ -155,7 +155,7 @@ export default function MyFoundItemDetailScreen() {
                     <View style={styles.infoSection}>
                         <View style={styles.infoRow}>
                             <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
-                                <MapPin size={18} color="#667eea" />
+                                <MapPin size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Vị trí tìm thấy</Text>
@@ -167,7 +167,7 @@ export default function MyFoundItemDetailScreen() {
 
                         <View style={styles.infoRow}>
                             <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
-                                <Calendar size={18} color="#667eea" />
+                                <Calendar size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Ngày tìm thấy</Text>
@@ -187,7 +187,7 @@ export default function MyFoundItemDetailScreen() {
 
                         <View style={styles.infoRow}>
                             <View style={[styles.iconContainer, { backgroundColor: '#ede9fe' }]}>
-                                <Building2 size={18} color="#667eea" />
+                                <Building2 size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Campus</Text>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     retryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
@@ -441,13 +441,13 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     primaryButton: {
-        backgroundColor: '#667eea',
+        backgroundColor: '#0f172a',
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        shadowColor: '#667eea',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

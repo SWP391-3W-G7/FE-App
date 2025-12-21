@@ -68,7 +68,16 @@ export async function apiClient<T>(
         console.log(`Response status: ${response.status} (took ${elapsed}ms)`);
 
         if (!response.ok) {
-            const error = new Error(`API Error: ${response.statusText}`) as ApiError;
+            let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+            try {
+                const errorData = await response.text();
+                console.error('API Error Response:', errorData);
+                errorMessage += ` - ${errorData}`;
+            } catch (e) {
+                // Ignore body parsing error
+            }
+
+            const error = new Error(errorMessage) as ApiError;
             error.status = response.status;
             error.statusText = response.statusText;
             console.error('API call failed:', response.status);
@@ -127,7 +136,16 @@ export async function apiClientFormData<T>(
         console.log(`Response status: ${response.status} (took ${elapsed}ms)`);
 
         if (!response.ok) {
-            const error = new Error(`API Error: ${response.statusText}`) as ApiError;
+            let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+            try {
+                const errorData = await response.text();
+                console.error('API Error Response:', errorData);
+                errorMessage += ` - ${errorData}`;
+            } catch (e) {
+                // Ignore body parsing error
+            }
+
+            const error = new Error(errorMessage) as ApiError;
             error.status = response.status;
             error.statusText = response.statusText;
             console.error('API call failed:', response.status);

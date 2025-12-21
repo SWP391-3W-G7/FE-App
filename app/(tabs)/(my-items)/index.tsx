@@ -195,8 +195,8 @@ export default function MyItemsScreen() {
     if (isLoading) {
       return (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <ActivityIndicator size="large" color="#0f172a" />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       );
     }
@@ -247,8 +247,8 @@ export default function MyItemsScreen() {
     if (isClaimsLoading) {
       return (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <ActivityIndicator size="large" color="#0f172a" />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       );
     }
@@ -292,7 +292,7 @@ export default function MyItemsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={['#0f172a', '#1e293b']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top }]}
@@ -323,7 +323,7 @@ export default function MyItemsScreen() {
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#667eea" />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#0f172a" />
         }
       >
         {activeTab === 'myReports' ? renderReportsContent() : renderClaimsContent()}
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#0f172a',
   },
   tabText: {
     fontSize: 14,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#0f172a',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

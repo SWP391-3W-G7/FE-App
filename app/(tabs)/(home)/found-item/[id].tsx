@@ -30,9 +30,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StudentIdCardPrompt } from '@/components/StudentIdCardPrompt';
 import { useCreateClaim } from '@/hooks/mutations/useCreateClaim';
 import { useFoundItemDetail } from '@/hooks/queries/useFoundItemDetail';
 import { useMyLostItems } from '@/hooks/queries/useMyLostItems';
+import { useUserProfile } from '@/hooks/queries/useUserProfile';
 import { formatRelativeDate } from '@/utils/date';
 import { getCategoryColor, getStatusColor } from '@/utils/status';
 
@@ -58,17 +60,24 @@ export default function FoundItemDetailScreen() {
     const [evidenceImages, setEvidenceImages] = useState<ImageFile[]>([]);
     const [selectedLostItemId, setSelectedLostItemId] = useState<number | undefined>(undefined);
     const [showLostItemPicker, setShowLostItemPicker] = useState(false);
+    const [showStudentIdPrompt, setShowStudentIdPrompt] = useState(false);
 
     const itemId = parseInt(id || '0', 10);
     const { data: item, isLoading, isRefetching, refetch, error } = useFoundItemDetail(itemId);
     const { data: myLostItems, isLoading: isLoadingLostItems } = useMyLostItems();
     const createClaimMutation = useCreateClaim();
+    const { data: userProfile, refetch: refetchProfile } = useUserProfile();
 
     const handleBack = () => {
         router.back();
     };
 
     const handleClaimPress = () => {
+        // Check if student ID card is uploaded first
+        if (!userProfile?.studentIdCardUrl) {
+            setShowStudentIdPrompt(true);
+            return;
+        }
         setShowClaimModal(true);
     };
 
@@ -341,7 +350,7 @@ export default function FoundItemDetailScreen() {
                                     ]}>
                                         {selectedLostItemId
                                             ? myLostItems?.find(i => i.lostItemId === selectedLostItemId)?.title || 'Đã chọn'
-                                            : 'Chọn báo cáo mất đồ...'
+                                            : 'Select your lost item report...'
                                         }
                                     </Text>
                                     <ChevronDown size={20} color="#64748b" />
@@ -389,7 +398,7 @@ export default function FoundItemDetailScreen() {
                                                 ))}
                                             </ScrollView>
                                         ) : (
-                                            <Text style={styles.noLostItemsText}>Bạn chưa có báo cáo mất đồ nào</Text>
+                                            <Text style={styles.noLostItemsText}>You have no lost item reports</Text>
                                         )}
                                     </View>
                                 )}
@@ -428,7 +437,7 @@ export default function FoundItemDetailScreen() {
                                 <View style={styles.imagePickerRow}>
                                     <TouchableOpacity style={styles.addImageButton} onPress={handlePickImage}>
                                         <Camera size={24} color="#10b981" />
-                                        <Text style={styles.addImageText}>Thêm ảnh</Text>
+                                        <Text style={styles.addImageText}>Add images</Text>
                                     </TouchableOpacity>
                                     {evidenceImages.map((img, index) => (
                                         <View key={index} style={styles.previewImageContainer}>
@@ -461,6 +470,29 @@ export default function FoundItemDetailScreen() {
                             </TouchableOpacity>
                         </ScrollView>
                     </View>
+                </View>
+            </Modal>
+
+            {/* Student ID Card Upload Modal */}
+            <Modal
+                visible={showStudentIdPrompt}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowStudentIdPrompt(false)}
+            >
+                <View style={styles.studentIdPromptOverlay}>
+                    <StudentIdCardPrompt
+                        onUploadSuccess={() => {
+                            setShowStudentIdPrompt(false);
+                            refetchProfile();
+                        }}
+                    />
+                    <TouchableOpacity
+                        style={styles.closePromptButton}
+                        onPress={() => setShowStudentIdPrompt(false)}
+                    >
+                        <Text style={styles.closePromptText}>Để sau</Text>
+                    </TouchableOpacity>
                 </View>
             </Modal>
         </View>
@@ -879,5 +911,24 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#94a3b8',
         textAlign: 'center',
+    },
+    studentIdPromptOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    closePromptButton: {
+        marginTop: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 8,
+    },
+    closePromptText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
