@@ -77,7 +77,7 @@ export default function MyLostItemDetailScreen() {
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <ChevronLeft size={28} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Chi tiết báo cáo</Text>
+                <Text style={styles.headerTitle}>Report Details</Text>
                 <View style={styles.headerSpacer} />
             </LinearGradient>
 
@@ -161,7 +161,7 @@ export default function MyLostItemDetailScreen() {
                                 <MapPin size={18} color="#ef4444" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Vị trí bị mất</Text>
+                                <Text style={styles.infoLabel}>Lost Location</Text>
                                 <Text style={styles.infoValue}>{item.lostLocation}</Text>
                             </View>
                         </View>
@@ -173,7 +173,7 @@ export default function MyLostItemDetailScreen() {
                                 <Calendar size={18} color="#ef4444" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Ngày bị mất</Text>
+                                <Text style={styles.infoLabel}>Lost Date</Text>
                                 <Text style={styles.infoValue}>
                                     {new Date(item.lostDate).toLocaleDateString('vi-VN', {
                                         weekday: 'long',
@@ -202,7 +202,7 @@ export default function MyLostItemDetailScreen() {
                     {/* Description */}
                     {item.description && (
                         <View style={styles.descriptionSection}>
-                            <Text style={styles.sectionTitle}>Mô tả</Text>
+                            <Text style={styles.sectionTitle}>Description</Text>
                             <Text style={styles.descriptionText}>{item.description}</Text>
                         </View>
                     )}

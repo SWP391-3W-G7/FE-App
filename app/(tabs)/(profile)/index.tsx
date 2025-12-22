@@ -86,7 +86,7 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin tài khoản</Text>
+          <Text style={styles.sectionTitle}>Account Information</Text>
 
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
@@ -118,7 +118,7 @@ export default function ProfileScreen() {
                 <Phone size={20} color="#0f172a" />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Số điện thoại</Text>
+                <Text style={styles.infoLabel}>Phone Number</Text>
                 <Text style={styles.infoValue}>{profile?.phoneNumber || 'N/A'}</Text>
               </View>
             </View>
@@ -154,7 +154,7 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <LogOut size={20} color="#ef4444" />
-            <Text style={styles.logoutText}>Đăng xuất</Text>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
 

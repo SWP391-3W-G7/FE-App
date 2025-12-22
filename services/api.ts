@@ -71,7 +71,10 @@ export async function apiClient<T>(
             let errorMessage = `API Error: ${response.status} ${response.statusText}`;
             try {
                 const errorData = await response.text();
-                console.error('API Error Response:', errorData);
+                // Only log non-401 errors (401 is expected during logout)
+                if (response.status !== 401) {
+                    console.error('API Error Response:', errorData);
+                }
                 errorMessage += ` - ${errorData}`;
             } catch (e) {
                 // Ignore body parsing error
@@ -80,7 +83,10 @@ export async function apiClient<T>(
             const error = new Error(errorMessage) as ApiError;
             error.status = response.status;
             error.statusText = response.statusText;
-            console.error('API call failed:', response.status);
+            // Silence 401 errors - expected during logout when token is cleared
+            if (response.status !== 401) {
+                console.error('API call failed:', response.status);
+            }
             console.log('==========================================');
             throw error;
         }
@@ -89,7 +95,11 @@ export async function apiClient<T>(
         console.log('==========================================');
         return data as T;
     } catch (error) {
-        console.error('API Error:', error);
+        // Silence 401 errors in catch block
+        const apiErr = error as ApiError;
+        if (apiErr.status !== 401) {
+            console.error('API Error:', error);
+        }
         console.log('==========================================');
         throw error;
     }
@@ -139,7 +149,10 @@ export async function apiClientFormData<T>(
             let errorMessage = `API Error: ${response.status} ${response.statusText}`;
             try {
                 const errorData = await response.text();
-                console.error('API Error Response:', errorData);
+                // Only log non-401 errors (401 is expected during logout)
+                if (response.status !== 401) {
+                    console.error('API Error Response:', errorData);
+                }
                 errorMessage += ` - ${errorData}`;
             } catch (e) {
                 // Ignore body parsing error
@@ -148,7 +161,10 @@ export async function apiClientFormData<T>(
             const error = new Error(errorMessage) as ApiError;
             error.status = response.status;
             error.statusText = response.statusText;
-            console.error('API call failed:', response.status);
+            // Silence 401 errors - expected during logout when token is cleared
+            if (response.status !== 401) {
+                console.error('API call failed:', response.status);
+            }
             console.log('==========================================');
             throw error;
         }
@@ -157,7 +173,11 @@ export async function apiClientFormData<T>(
         console.log('==========================================');
         return data as T;
     } catch (error) {
-        console.error('API Error:', error);
+        // Silence 401 errors in catch block
+        const apiErr = error as ApiError;
+        if (apiErr.status !== 401) {
+            console.error('API Error:', error);
+        }
         console.log('==========================================');
         throw error;
     }

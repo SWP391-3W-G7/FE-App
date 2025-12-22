@@ -32,6 +32,12 @@ export default function MyItemsStackLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="lost-item/[id]"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

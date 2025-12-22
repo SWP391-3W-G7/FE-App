@@ -6,8 +6,7 @@ import {
     ChevronLeft,
     FileText,
     MapPin,
-    Tag,
-    UserCheck,
+    Tag
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -78,7 +77,7 @@ export default function MyFoundItemDetailScreen() {
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <ChevronLeft size={28} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Chi tiết báo cáo</Text>
+                <Text style={styles.headerTitle}>Report Details</Text>
                 <View style={styles.headerSpacer} />
             </LinearGradient>
 
@@ -158,7 +157,7 @@ export default function MyFoundItemDetailScreen() {
                                 <MapPin size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Vị trí tìm thấy</Text>
+                                <Text style={styles.infoLabel}>Found Location</Text>
                                 <Text style={styles.infoValue}>{item.foundLocation}</Text>
                             </View>
                         </View>
@@ -170,7 +169,7 @@ export default function MyFoundItemDetailScreen() {
                                 <Calendar size={18} color="#0f172a" />
                             </View>
                             <View style={styles.infoContent}>
-                                <Text style={styles.infoLabel}>Ngày tìm thấy</Text>
+                                <Text style={styles.infoLabel}>Found Date</Text>
                                 <Text style={styles.infoValue}>
                                     {new Date(item.foundDate).toLocaleDateString('vi-VN', {
                                         weekday: 'long',
@@ -199,19 +198,19 @@ export default function MyFoundItemDetailScreen() {
                     {/* Description */}
                     {item.description && (
                         <View style={styles.descriptionSection}>
-                            <Text style={styles.sectionTitle}>Mô tả</Text>
+                            <Text style={styles.sectionTitle}>Description</Text>
                             <Text style={styles.descriptionText}>{item.description}</Text>
                         </View>
                     )}
                 </View>
 
                 {/* Action Buttons */}
-                <View style={styles.actionSection}>
+                {/* <View style={styles.actionSection}>
                     <TouchableOpacity style={styles.primaryButton}>
                         <UserCheck size={20} color="#fff" style={{ marginRight: 8 }} />
                         <Text style={styles.primaryButtonText}>Xem yêu cầu nhận</Text>
                     </TouchableOpacity>
-                </View>
+                </View> */}
 
                 <View style={{ height: insets.bottom + 20 }} />
             </ScrollView>
